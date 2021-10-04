@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useAtom = exports.createAtom = void 0;
+exports.useAtomActions = exports.useAtomDispatch = exports.useAtomValue = exports.useAtom = exports.createAtom = void 0;
 /* eslint-disable react-hooks/exhaustive-deps */
 var react_1 = require("react");
 var events_1 = require("events");
@@ -70,4 +70,19 @@ function useAtom(atom) {
     return atom();
 }
 exports.useAtom = useAtom;
+function useAtomValue(atom) {
+    var value = useAtom(atom)[0];
+    return value;
+}
+exports.useAtomValue = useAtomValue;
+function useAtomDispatch(atom) {
+    var _a = useAtom(atom), dispatch = _a[1];
+    return dispatch;
+}
+exports.useAtomDispatch = useAtomDispatch;
+function useAtomActions(atom) {
+    var _a = useAtom(atom), actions = _a[2];
+    return actions;
+}
+exports.useAtomActions = useAtomActions;
 //# sourceMappingURL=index.js.map
