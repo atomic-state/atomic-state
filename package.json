@@ -1,0 +1,19 @@
+{
+  "name": "atomic-state",
+  "version": "1.0.0",
+  "description": "State managment library for React and React Native apps",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danybeltran/atomic-state"
+  },
+  "keywords": [
+    "State managment",
+    "reactjs",
+    "react",
+    "localStorage persistence"
+  ],
+  "author": "Dany Beltran",
+  "license": "MIT",
+  "homepage": "https://github.com/danybeltran/atomic-state#readme"
+}

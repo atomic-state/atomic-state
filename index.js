@@ -1,0 +1,73 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.useAtom = exports.createAtom = void 0;
+/* eslint-disable react-hooks/exhaustive-deps */
+var react_1 = require("react");
+var events_1 = require("events");
+var Aesthetic = new events_1.EventEmitter();
+function notify(storeName, hookCall, payload) {
+    if (payload === void 0) { payload = {}; }
+    Aesthetic.emit(storeName, { hookCall: hookCall, payload: payload });
+}
+function useGlobalState(initialValue, storeName, persist, actions) {
+    if (storeName === void 0) { storeName = ""; }
+    if (persist === void 0) { persist = false; }
+    if (actions === void 0) { actions = {}; }
+    if (typeof localStorage !== "undefined") {
+        if (!localStorage["store-" + storeName] && persist) {
+            localStorage["store-" + storeName] = JSON.stringify(initialValue);
+        }
+    }
+    var hookCall = (0, react_1.useMemo)(function () { return ("" + Math.random()).split(".")[1]; }, []);
+    var _a = (0, react_1.useState)(persist && typeof localStorage !== "undefined"
+        ? JSON.parse(localStorage["store-" + storeName])
+        : initialValue), store = _a[0], setStore = _a[1];
+    var updateStore = function (update) {
+        setStore(function (c) {
+            var newValue = typeof update === "function" ? update(c) : update;
+            notify(storeName, hookCall, newValue);
+            if (persist && typeof localStorage !== "undefined") {
+                localStorage["store-" + storeName] = JSON.stringify(newValue);
+            }
+            return newValue;
+        });
+    };
+    (0, react_1.useEffect)(function () {
+        var stateListener = function (e) {
+            if (e.hookCall !== hookCall) {
+                setStore(e.payload);
+            }
+        };
+        Aesthetic.addListener(storeName, stateListener);
+        return function () {
+            Aesthetic.removeListener(storeName, stateListener);
+        };
+    }, [store, hookCall, storeName]);
+    var set = (0, react_1.useMemo)(function () { return function (value) {
+        updateStore(value);
+    }; }, [store]);
+    var __actions = (0, react_1.useMemo)(function () {
+        return Object.fromEntries(Object.keys(actions).map(function (key) { return [
+            key,
+            function (args) {
+                return actions[key]({
+                    args: args,
+                    state: store,
+                    dispatch: set,
+                });
+            },
+        ]; }));
+    }, [store]);
+    return [store, set, __actions];
+}
+function createAtom(init) {
+    return function () {
+        return useGlobalState(init.default, init.name, init.localStoragePersistence, init.actions);
+    };
+}
+exports.createAtom = createAtom;
+function useAtom(atom) {
+    return atom();
+}
+exports.useAtom = useAtom;
+//# sourceMappingURL=index.js.map
