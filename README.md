@@ -16,8 +16,18 @@ The `createAtom` creates a state that can be used by different components, and w
 
 First:
 
+```
+npm install --save atomic-state
+
+or
+
+yarn add --save atomic-state
+```
+
+Then
+
 ```jsx
-import { createAtom, useAtom } from "aesthetic-state";
+import { createAtom, useAtom } from "atomic-state";
 ```
 
 For example:
@@ -62,7 +72,7 @@ You have your app, your main component, you can use an atom in a similar way tha
 Take a look:
 
 ```jsx
-import { createAtom, useAtom } from "aesthetic-state";
+import { createAtom, useAtom } from "atomic-state";
 
 const EMAIL = createAtom({
   name: "email-state",
