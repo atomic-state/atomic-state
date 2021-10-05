@@ -121,14 +121,28 @@ export function createAtom<T>(init: {
     ];
 }
 
-export function useAtom<T>(
-  atom: () => [
-    T,
-    (cb: ((c: T) => T) | T) => void,
-    {
-      [name: string]: (args: any) => void;
-    }
-  ]
-) {
+type atomType<T> = () => [
+  T,
+  (cb: ((c: T) => T) | T) => void,
+  {
+    [name: string]: (args: any) => void;
+  }
+];
+export function useAtom<T>(atom: atomType<T>) {
   return atom();
+}
+
+export function useAtomValue<T>(atom: atomType<T>) {
+  const [value] = useAtom(atom);
+  return value;
+}
+
+export function useAtomDispatch<T>(atom: atomType<T>) {
+  const [, dispatch] = useAtom(atom);
+  return dispatch;
+}
+
+export function useAtomActions<T>(atom: atomType<T>) {
+  const [, , actions] = useAtom(atom);
+  return actions;
 }
