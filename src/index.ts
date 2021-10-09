@@ -2,11 +2,22 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { EventEmitter } from "events";
 
-const Aesthetic = new EventEmitter();
-
-function notify(storeName: string, hookCall: string, payload = {}) {
-  Aesthetic.emit(storeName, { hookCall, payload });
+function createEmitter() {
+  const emitter = new EventEmitter();
+  emitter.setMaxListeners(10e12);
+  function notify(storeName: string, hookCall: string, payload = {}) {
+    emitter.emit(storeName, { hookCall, payload });
+  }
+  return {
+    Aesthetic: emitter,
+    notify,
+  };
 }
+/**
+ * Contains an event emitter for each store using the store name
+ */
+const emitters: any = {};
+
 function useGlobalState<T>(
   initialValue: T,
   storeName = "",
@@ -19,6 +30,10 @@ function useGlobalState<T>(
     }) => void;
   } = {}
 ) {
+  if (!emitters[storeName]) {
+    emitters[storeName] = createEmitter();
+  }
+  const { Aesthetic, notify } = emitters[storeName];
   if (typeof localStorage !== "undefined") {
     if (!localStorage[`store-${storeName}`] && persist) {
       localStorage[`store-${storeName}`] = JSON.stringify(initialValue);
@@ -146,3 +161,8 @@ export function useAtomActions<T>(atom: atomType<T>) {
   const [, , actions] = useAtom(atom);
   return actions;
 }
+
+export const atom = createAtom;
+export const useActions = useAtomActions;
+export const useValue = useAtomValue;
+export const useDispatch = useAtomDispatch;

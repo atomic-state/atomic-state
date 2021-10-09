@@ -1,27 +1,42 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useAtomActions = exports.useAtomDispatch = exports.useAtomValue = exports.useAtom = exports.createAtom = void 0;
+exports.useDispatch = exports.useValue = exports.useActions = exports.atom = exports.useAtomActions = exports.useAtomDispatch = exports.useAtomValue = exports.useAtom = exports.createAtom = void 0;
 /* eslint-disable react-hooks/exhaustive-deps */
 var react_1 = require("react");
 var events_1 = require("events");
-var Aesthetic = new events_1.EventEmitter();
-function notify(storeName, hookCall, payload) {
-    if (payload === void 0) { payload = {}; }
-    Aesthetic.emit(storeName, { hookCall: hookCall, payload: payload });
+function createEmitter() {
+    var emitter = new events_1.EventEmitter();
+    emitter.setMaxListeners(10e12);
+    function notify(storeName, hookCall, payload) {
+        if (payload === void 0) { payload = {}; }
+        emitter.emit(storeName, { hookCall: hookCall, payload: payload });
+    }
+    return {
+        Aesthetic: emitter,
+        notify: notify,
+    };
 }
+/**
+ * Contains an event emitter for each store using the store name
+ */
+var emitters = {};
 function useGlobalState(initialValue, storeName, persist, actions) {
     if (storeName === void 0) { storeName = ""; }
     if (persist === void 0) { persist = false; }
     if (actions === void 0) { actions = {}; }
+    if (!emitters[storeName]) {
+        emitters[storeName] = createEmitter();
+    }
+    var _a = emitters[storeName], Aesthetic = _a.Aesthetic, notify = _a.notify;
     if (typeof localStorage !== "undefined") {
         if (!localStorage["store-" + storeName] && persist) {
             localStorage["store-" + storeName] = JSON.stringify(initialValue);
         }
     }
     var hookCall = (0, react_1.useMemo)(function () { return ("" + Math.random()).split(".")[1]; }, []);
-    var _a = (0, react_1.useState)(persist && typeof localStorage !== "undefined"
+    var _b = (0, react_1.useState)(persist && typeof localStorage !== "undefined"
         ? JSON.parse(localStorage["store-" + storeName])
-        : initialValue), store = _a[0], setStore = _a[1];
+        : initialValue), store = _b[0], setStore = _b[1];
     var updateStore = function (update) {
         setStore(function (c) {
             var newValue = typeof update === "function" ? update(c) : update;
@@ -85,4 +100,8 @@ function useAtomActions(atom) {
     return actions;
 }
 exports.useAtomActions = useAtomActions;
+exports.atom = createAtom;
+exports.useActions = useAtomActions;
+exports.useValue = useAtomValue;
+exports.useDispatch = useAtomDispatch;
 //# sourceMappingURL=index.js.map

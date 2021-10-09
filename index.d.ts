@@ -43,4 +43,8 @@ export declare function useAtomDispatch<T>(atom: atomType<T>): (cb: T | ((c: T) 
 export declare function useAtomActions<T>(atom: atomType<T>): {
     [name: string]: (args: any) => void;
 };
+export declare const atom: typeof createAtom;
+export declare const useActions: typeof useAtomActions;
+export declare const useValue: typeof useAtomValue;
+export declare const useDispatch: typeof useAtomDispatch;
 export {};
