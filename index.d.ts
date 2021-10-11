@@ -26,22 +26,22 @@ export declare function createAtom<T>(init: {
         }) => void;
     };
 }): () => [T, (cb: T | ((c: T) => T)) => void, {
-    [name: string]: (args: any) => void;
+    [name: string]: (args?: any) => void;
 }];
 declare type atomType<T> = () => [
     T,
     (cb: ((c: T) => T) | T) => void,
     {
-        [name: string]: (args: any) => void;
+        [name: string]: (args?: any) => void;
     }
 ];
 export declare function useAtom<T>(atom: atomType<T>): [T, (cb: T | ((c: T) => T)) => void, {
-    [name: string]: (args: any) => void;
+    [name: string]: (args?: any) => void;
 }];
 export declare function useAtomValue<T>(atom: atomType<T>): T;
 export declare function useAtomDispatch<T>(atom: atomType<T>): (cb: T | ((c: T) => T)) => void;
 export declare function useAtomActions<T>(atom: atomType<T>): {
-    [name: string]: (args: any) => void;
+    [name: string]: (args?: any) => void;
 };
 export declare const atom: typeof createAtom;
 export declare const useActions: typeof useAtomActions;
