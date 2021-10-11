@@ -58,7 +58,7 @@ function useGlobalState<T>(
   };
 
   useEffect(() => {
-    const stateListener = (e: any) => {
+    const stateListener = async (e: any) => {
       if (e.hookCall !== hookCall) {
         setStore(e.payload);
       }
@@ -81,7 +81,7 @@ function useGlobalState<T>(
       Object.fromEntries(
         Object.keys(actions).map((key) => [
           key,
-          (args: any) =>
+          (args?: any) =>
             actions[key]({
               args,
               state: store,
@@ -132,7 +132,7 @@ export function createAtom<T>(init: {
       T,
       (cb: ((c: T) => T) | T) => void,
 
-      { [name: string]: (args: any) => void }
+      { [name: string]: (args?: any) => void }
     ];
 }
 
@@ -140,7 +140,7 @@ type atomType<T> = () => [
   T,
   (cb: ((c: T) => T) | T) => void,
   {
-    [name: string]: (args: any) => void;
+    [name: string]: (args?: any) => void;
   }
 ];
 export function useAtom<T>(atom: atomType<T>) {
