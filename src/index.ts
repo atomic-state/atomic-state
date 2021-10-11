@@ -64,7 +64,7 @@ function useGlobalState<T>(
       return newValue;
     });
   };
-  
+
   useEffect(() => {
     notify(storeName, hookCall, val?.current);
   }, [val.current]);

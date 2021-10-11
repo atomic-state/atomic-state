@@ -1,0 +1,7 @@
+__tests__
+tests
+.npmignore
+.gitignore
+babel.config.js
+jest.config.js
+tsonfig.json
