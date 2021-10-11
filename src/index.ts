@@ -1,5 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { EventEmitter } from "events";
 
 function createEmitter() {
@@ -45,17 +52,22 @@ function useGlobalState<T>(
       ? JSON.parse(localStorage[`store-${storeName}`])
       : initialValue
   );
+  const val = useRef(store);
 
   const updateStore = (update: (previousValue: T) => T) => {
     setStore((c) => {
       const newValue = typeof update === "function" ? update(c) : update;
-      notify(storeName, hookCall, newValue);
       if (persist && typeof localStorage !== "undefined") {
         localStorage[`store-${storeName}`] = JSON.stringify(newValue);
       }
+      val.current = newValue;
       return newValue;
     });
   };
+  
+  useEffect(() => {
+    notify(storeName, hookCall, val?.current);
+  }, [val.current]);
 
   useEffect(() => {
     const stateListener = async (e: any) => {

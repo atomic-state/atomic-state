@@ -74,16 +74,20 @@ function useGlobalState(initialValue, storeName, persist, actions) {
     var _b = (0, react_1.useState)(persist && typeof localStorage !== "undefined"
         ? JSON.parse(localStorage["store-" + storeName])
         : initialValue), store = _b[0], setStore = _b[1];
+    var val = (0, react_1.useRef)(store);
     var updateStore = function (update) {
         setStore(function (c) {
             var newValue = typeof update === "function" ? update(c) : update;
-            notify(storeName, hookCall, newValue);
             if (persist && typeof localStorage !== "undefined") {
                 localStorage["store-" + storeName] = JSON.stringify(newValue);
             }
+            val.current = newValue;
             return newValue;
         });
     };
+    (0, react_1.useEffect)(function () {
+        notify(storeName, hookCall, val === null || val === void 0 ? void 0 : val.current);
+    }, [val.current]);
     (0, react_1.useEffect)(function () {
         var stateListener = function (e) { return __awaiter(_this, void 0, void 0, function () {
             return __generator(this, function (_a) {
