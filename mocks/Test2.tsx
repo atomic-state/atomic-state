@@ -1,5 +1,5 @@
 import React from "react";
-import { atom, useAtom } from "..";
+import { atom, useAtom } from "../";
 
 const nameAtom = atom({
   name: "user-name",
@@ -18,7 +18,7 @@ export const NameField = () => {
       <input
         title="name field"
         type="text"
-        value={name}
+        value={name || ""}
         onChange={(e) => setName(e.target.value)}
       />
     </div>

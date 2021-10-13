@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+/*  eslint-disable react-hooks/exhaustive-deps*/
 import {
   Dispatch,
   SetStateAction,
@@ -29,6 +29,7 @@ function useGlobalState<T>(
   initialValue: T,
   storeName = "",
   persist = false,
+  get = (value: T) => value,
   actions: {
     [name: string]: (st: {
       args: any;
@@ -52,6 +53,7 @@ function useGlobalState<T>(
       ? JSON.parse(localStorage[`store-${storeName}`])
       : initialValue
   );
+  const [storeGetter, setStoreGetter] = useState<any>();
   const val = useRef(store);
 
   const updateStore = (update: (previousValue: T) => T) => {
@@ -104,10 +106,29 @@ function useGlobalState<T>(
     [store]
   );
 
-  return [store, set as unknown as T, __actions];
+  const resolverStorePromise = useMemo(
+    () =>
+      async function () {
+        const result = await get(store);
+        return result;
+      },
+    [store]
+  );
+
+  useEffect(() => {
+    resolverStorePromise()
+      .then((res) => {
+        setStoreGetter(res);
+      })
+      .catch((er) => {
+        throw er;
+      });
+  }, [store, hookCall]);
+
+  return [storeGetter, set as unknown as T, __actions];
 }
 
-export function createAtom<T>(init: {
+type AtomInit<T> = {
   /**
    * Name of the store
    */
@@ -120,6 +141,7 @@ export function createAtom<T>(init: {
    * Whether to save state to the `localStorage` object
    */
   localStoragePersistence?: boolean;
+  get?: (value: T) => any;
   /**
    * Actions/reducers of the state.
    * These will keep the state synchronised across multiple components
@@ -133,12 +155,15 @@ export function createAtom<T>(init: {
       dispatch: Dispatch<SetStateAction<T>>;
     }) => void;
   };
-}) {
+};
+
+export function createAtom<T>(init: AtomInit<T>) {
   return () =>
     useGlobalState<T>(
       init.default,
-      init.name,
+      init.name || JSON.stringify(init.default),
       init.localStoragePersistence,
+      init.get,
       init.actions
     ) as [
       T,
