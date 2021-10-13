@@ -2,6 +2,7 @@ __tests__
 tests
 .npmignore
 .gitignore
+mocks
 babel.config.js
 jest.config.js
 tsonfig.json
