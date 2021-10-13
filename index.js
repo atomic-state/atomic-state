@@ -37,7 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useDispatch = exports.useValue = exports.useActions = exports.atom = exports.useAtomActions = exports.useAtomDispatch = exports.useAtomValue = exports.useAtom = exports.createAtom = void 0;
-/* eslint-disable react-hooks/exhaustive-deps */
+/*  eslint-disable react-hooks/exhaustive-deps*/
 var react_1 = require("react");
 var events_1 = require("events");
 function createEmitter() {
@@ -56,10 +56,11 @@ function createEmitter() {
  * Contains an event emitter for each store using the store name
  */
 var emitters = {};
-function useGlobalState(initialValue, storeName, persist, actions) {
+function useGlobalState(initialValue, storeName, persist, get, actions) {
     var _this = this;
     if (storeName === void 0) { storeName = ""; }
     if (persist === void 0) { persist = false; }
+    if (get === void 0) { get = function (value) { return value; }; }
     if (actions === void 0) { actions = {}; }
     if (!emitters[storeName]) {
         emitters[storeName] = createEmitter();
@@ -74,6 +75,7 @@ function useGlobalState(initialValue, storeName, persist, actions) {
     var _b = (0, react_1.useState)(persist && typeof localStorage !== "undefined"
         ? JSON.parse(localStorage["store-" + storeName])
         : initialValue), store = _b[0], setStore = _b[1];
+    var _c = (0, react_1.useState)(), storeGetter = _c[0], setStoreGetter = _c[1];
     var val = (0, react_1.useRef)(store);
     var updateStore = function (update) {
         setStore(function (c) {
@@ -117,11 +119,35 @@ function useGlobalState(initialValue, storeName, persist, actions) {
             },
         ]; }));
     }, [store]);
-    return [store, set, __actions];
+    var resolverStorePromise = (0, react_1.useMemo)(function () {
+        return function () {
+            return __awaiter(this, void 0, void 0, function () {
+                var result;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, get(store)];
+                        case 1:
+                            result = _a.sent();
+                            return [2 /*return*/, result];
+                    }
+                });
+            });
+        };
+    }, [store]);
+    (0, react_1.useEffect)(function () {
+        resolverStorePromise()
+            .then(function (res) {
+            setStoreGetter(res);
+        })
+            .catch(function (er) {
+            throw er;
+        });
+    }, [store, hookCall]);
+    return [storeGetter, set, __actions];
 }
 function createAtom(init) {
     return function () {
-        return useGlobalState(init.default, init.name, init.localStoragePersistence, init.actions);
+        return useGlobalState(init.default, init.name || JSON.stringify(init.default), init.localStoragePersistence, init.get, init.actions);
     };
 }
 exports.createAtom = createAtom;

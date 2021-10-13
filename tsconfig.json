@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "watch": true,
+    // "watch": true,
     "outDir": "./",
     "module": "commonjs",
     "esModuleInterop": true,

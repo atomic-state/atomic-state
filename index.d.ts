@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction } from "react";
-export declare function createAtom<T>(init: {
+declare type AtomInit<T> = {
     /**
      * Name of the store
      */
@@ -12,6 +12,7 @@ export declare function createAtom<T>(init: {
      * Whether to save state to the `localStorage` object
      */
     localStoragePersistence?: boolean;
+    get?: (value: T) => any;
     /**
      * Actions/reducers of the state.
      * These will keep the state synchronised across multiple components
@@ -25,7 +26,8 @@ export declare function createAtom<T>(init: {
             dispatch: Dispatch<SetStateAction<T>>;
         }) => void;
     };
-}): () => [T, (cb: T | ((c: T) => T)) => void, {
+};
+export declare function createAtom<T>(init: AtomInit<T>): () => [T, (cb: T | ((c: T) => T)) => void, {
     [name: string]: (args?: any) => void;
 }];
 declare type atomType<T> = () => [

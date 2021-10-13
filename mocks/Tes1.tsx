@@ -1,5 +1,5 @@
 import React from "react";
-import { atom, useDispatch, useValue } from "../index";
+import { atom, useDispatch, useValue } from "../";
 const clicks = atom({
   name: "clicks-count",
   default: 0,
