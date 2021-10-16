@@ -1,3 +1,10 @@
+/**  @license Atomic State
+ * Copyright (c) Dany Beltran
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import { EventEmitter } from "events";
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 
