@@ -36,10 +36,10 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useDispatch = exports.useValue = exports.useActions = exports.atom = exports.useAtomActions = exports.useAtomDispatch = exports.useAtomValue = exports.useAtom = exports.createAtom = void 0;
-/*  eslint-disable react-hooks/exhaustive-deps*/
-var react_1 = require("react");
+exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.createAtom = exports.atom = void 0;
 var events_1 = require("events");
+var react_1 = require("react");
+var atomEmitters = {};
 function createEmitter() {
     var emitter = new events_1.EventEmitter();
     emitter.setMaxListeners(10e12);
@@ -48,130 +48,112 @@ function createEmitter() {
         emitter.emit(storeName, { hookCall: hookCall, payload: payload });
     }
     return {
-        Aesthetic: emitter,
+        emitter: emitter,
         notify: notify,
     };
 }
-/**
- * Contains an event emitter for each store using the store name
- */
-var emitters = {};
-function useGlobalState(initialValue, storeName, persist, get, actions) {
+function useAtomCreate(init) {
     var _this = this;
-    if (storeName === void 0) { storeName = ""; }
-    if (persist === void 0) { persist = false; }
-    if (get === void 0) { get = function (value) { return value; }; }
-    if (actions === void 0) { actions = {}; }
-    if (!emitters[storeName]) {
-        emitters[storeName] = createEmitter();
-    }
-    var _a = emitters[storeName], Aesthetic = _a.Aesthetic, notify = _a.notify;
-    if (typeof localStorage !== "undefined") {
-        if (!localStorage["store-" + storeName] && persist) {
-            localStorage["store-" + storeName] = JSON.stringify(initialValue);
-        }
-    }
     var hookCall = (0, react_1.useMemo)(function () { return ("" + Math.random()).split(".")[1]; }, []);
-    var _b = (0, react_1.useState)(persist && typeof localStorage !== "undefined"
-        ? JSON.parse(localStorage["store-" + storeName])
-        : initialValue), store = _b[0], setStore = _b[1];
-    var _c = (0, react_1.useState)(), storeGetter = _c[0], setStoreGetter = _c[1];
-    var val = (0, react_1.useRef)(store);
-    var updateStore = function (update) {
-        setStore(function (c) {
-            var newValue = typeof update === "function" ? update(c) : update;
-            if (persist && typeof localStorage !== "undefined") {
-                localStorage["store-" + storeName] = JSON.stringify(newValue);
-            }
-            val.current = newValue;
-            return newValue;
-        });
-    };
+    var initialValue = (function getInitialValue() {
+        return init.localStoragePersistence
+            ? typeof localStorage !== "undefined"
+                ? typeof localStorage["store-" + init.name] !== "undefined"
+                    ? JSON.parse(localStorage["store-" + init.name])
+                    : init.default
+                : init.default
+            : init.default;
+    })();
+    var _a = (0, react_1.useState)(initialValue), state = _a[0], setState = _a[1];
+    if (!atomEmitters[init.name]) {
+        atomEmitters[init.name] = createEmitter();
+    }
+    var _b = atomEmitters[init.name], emitter = _b.emitter, notify = _b.notify;
     (0, react_1.useEffect)(function () {
-        notify(storeName, hookCall, val === null || val === void 0 ? void 0 : val.current);
-    }, [val.current]);
-    (0, react_1.useEffect)(function () {
-        var stateListener = function (e) { return __awaiter(_this, void 0, void 0, function () {
+        var handler = function (e) { return __awaiter(_this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 if (e.hookCall !== hookCall) {
-                    setStore(e.payload);
+                    setState(e.payload);
                 }
                 return [2 /*return*/];
             });
         }); };
-        Aesthetic.addListener(storeName, stateListener);
+        emitter.addListener(init.name, handler);
         return function () {
-            Aesthetic.removeListener(storeName, stateListener);
+            emitter.removeListener(init.name, handler);
         };
-    }, [store, hookCall, storeName]);
-    var set = (0, react_1.useMemo)(function () { return function (value) {
-        updateStore(value);
-    }; }, [store]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    var updateState = function (v) {
+        // First notify other subscribers
+        notify(init.name, hookCall, v);
+        // Finally update state
+        setState(v);
+    };
+    (0, react_1.useEffect)(function () {
+        if (typeof localStorage !== "undefined") {
+            localStorage["store-" + init.name] = JSON.stringify(state);
+        }
+    }, [init.name, state]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    var actions = (0, react_1.useMemo)(function () { return init.actions || {}; }, []);
     var __actions = (0, react_1.useMemo)(function () {
         return Object.fromEntries(Object.keys(actions).map(function (key) { return [
             key,
             function (args) {
                 return actions[key]({
                     args: args,
-                    state: store,
-                    dispatch: set,
+                    state: state,
+                    dispatch: updateState,
                 });
             },
         ]; }));
-    }, [store]);
-    var resolverStorePromise = (0, react_1.useMemo)(function () {
-        return function () {
-            return __awaiter(this, void 0, void 0, function () {
-                var result;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0: return [4 /*yield*/, get(store)];
-                        case 1:
-                            result = _a.sent();
-                            return [2 /*return*/, result];
-                    }
-                });
-            });
-        };
-    }, [store]);
-    (0, react_1.useEffect)(function () {
-        resolverStorePromise()
-            .then(function (res) {
-            setStoreGetter(res);
-        })
-            .catch(function (er) {
-            throw er;
-        });
-    }, [store, hookCall]);
-    return [storeGetter, set, __actions];
+    }, 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state]);
+    return [
+        state,
+        updateState,
+        __actions,
+    ];
 }
-function createAtom(init) {
-    return function () {
-        return useGlobalState(init.default, init.name || JSON.stringify(init.default), init.localStoragePersistence, init.get, init.actions);
-    };
+/**
+ * Creates an atom containing state
+ */
+function atom(init) {
+    return function () { return useAtomCreate(init); };
 }
-exports.createAtom = createAtom;
+exports.atom = atom;
+exports.createAtom = atom;
+/**
+ * Get an atom's value and state setter
+ */
 function useAtom(atom) {
     return atom();
 }
 exports.useAtom = useAtom;
-function useAtomValue(atom) {
-    var value = useAtom(atom)[0];
-    return value;
+/**
+ * Get an atom's value
+ */
+function useValue(atom) {
+    return atom()[0];
 }
-exports.useAtomValue = useAtomValue;
-function useAtomDispatch(atom) {
-    var _a = useAtom(atom), dispatch = _a[1];
-    return dispatch;
+exports.useValue = useValue;
+exports.useAtomValue = useValue;
+/**
+ * Get the function that updates the atom's value
+ */
+function useDispatch(atom) {
+    return atom()[1];
 }
-exports.useAtomDispatch = useAtomDispatch;
-function useAtomActions(atom) {
-    var _a = useAtom(atom), actions = _a[2];
-    return actions;
+exports.useDispatch = useDispatch;
+exports.useAtomDispatch = useDispatch;
+/**
+ * Get the actions of the atom as reducers
+ */
+function useActions(atom) {
+    return atom()[2];
 }
-exports.useAtomActions = useAtomActions;
-exports.atom = createAtom;
-exports.useActions = useAtomActions;
-exports.useValue = useAtomValue;
-exports.useDispatch = useAtomDispatch;
+exports.useActions = useActions;
+exports.useAtomActions = useActions;
 //# sourceMappingURL=index.js.map
