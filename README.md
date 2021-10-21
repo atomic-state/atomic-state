@@ -1,6 +1,16 @@
-### Atomic State
+<h1>
+<p align="center">Atomic State</p>
+</h1>
 
-An experimental state managment library I'm working on as a side project:)
+<p align="center">
+<img src="https://img.shields.io/badge/License-MIT-yellow.svg" />
+<img src="https://img.shields.io/npm/v/atomic-state.svg?style=flat"/>
+<img src="https://img.shields.io/github/stars/danybeltran/atomic-state.svg?style=social&label=Star)" alt="Github Stars"/>
+</p>
+
+
+<p align="center">An experimental state managment library I'm working on as a side project:)
+</p>
 
 Currently, this works for any React application (native or web), but persistence only works in the web, if you are using React Native, you'll have to implement your own persistence method:)
 
