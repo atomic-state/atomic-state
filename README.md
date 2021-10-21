@@ -3,6 +3,11 @@
 </h1>
 
 <p align="center">
+<img src="./documenation/atomic-state.svg" height="350px" width="350px" />
+</p>
+
+
+<p align="center">
 <img src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 <img src="https://img.shields.io/npm/v/atomic-state.svg?style=flat"/>
 <img src="https://img.shields.io/github/stars/danybeltran/atomic-state.svg?style=social&label=Star)" alt="Github Stars"/>
