@@ -8,7 +8,7 @@
 
 
 <p align="center">
-<img src="https://github.com/github/docs/actions/workflows/main.yml/badge.svg?event=push" />
+<img src="https://github.com/github/docs/actions/workflows/test.yml/badge.svg?event=push" />
 
 <img src="https://img.shields.io/badge/License-MIT-yellow.svg" />
 <img src="https://img.shields.io/npm/v/atomic-state.svg?style=flat"/>
