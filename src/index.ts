@@ -87,6 +87,10 @@ function useAtomCreate<R>(init: AtomType<R>) {
     if (typeof localStorage !== "undefined") {
       if (init.localStoragePersistence) {
         localStorage[`store-${init.name}`] = JSON.stringify(state);
+      } else {
+        if (typeof localStorage[`store-${init.name}`] !== "undefined") {
+          localStorage.removeItem(`store-${init.name}`);
+        }
       }
     }
   }, [init.name, init.localStoragePersistence, state]);

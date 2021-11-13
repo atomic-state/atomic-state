@@ -101,6 +101,11 @@ function useAtomCreate(init) {
             if (init.localStoragePersistence) {
                 localStorage["store-" + init.name] = JSON.stringify(state);
             }
+            else {
+                if (typeof localStorage["store-" + init.name] !== "undefined") {
+                    localStorage.removeItem("store-" + init.name);
+                }
+            }
         }
     }, [init.name, init.localStoragePersistence, state]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
