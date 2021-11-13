@@ -42,7 +42,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.createAtom = exports.atom = void 0;
+exports.storage = exports.useStorage = exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.createAtom = exports.atom = void 0;
 var events_1 = require("events");
 var react_1 = require("react");
 var atomEmitters = {};
@@ -98,9 +98,16 @@ function useAtomCreate(init) {
     };
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
-            localStorage["store-" + init.name] = JSON.stringify(state);
+            if (init.localStoragePersistence) {
+                localStorage["store-" + init.name] = JSON.stringify(state);
+            }
+            else {
+                if (typeof localStorage["store-" + init.name] !== "undefined") {
+                    localStorage.removeItem("store-" + init.name);
+                }
+            }
         }
-    }, [init.name, state]);
+    }, [init.name, init.localStoragePersistence, state]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     var actions = (0, react_1.useMemo)(function () { return init.actions || {}; }, []);
     var __actions = (0, react_1.useMemo)(function () {
@@ -162,4 +169,70 @@ function useActions(atom) {
 }
 exports.useActions = useActions;
 exports.useAtomActions = useActions;
+// localStorage utilities for web apps
+var storageEmitter = (function () {
+    var emm = new events_1.EventEmitter();
+    emm.setMaxListeners(Math.pow(10, 10));
+    return emm;
+})();
+function useStorage() {
+    var _a = (0, react_1.useState)({}), keys = _a[0], setKeys = _a[1];
+    function updateStore() {
+        return __awaiter(this, void 0, void 0, function () {
+            var $keys, k;
+            return __generator(this, function (_a) {
+                $keys = {};
+                if (typeof localStorage !== "undefined") {
+                    for (k in localStorage) {
+                        if (!k.match(/clear|getItem|key|length|removeItem|setItem/)) {
+                            try {
+                                $keys[k] = JSON.parse(localStorage[k]);
+                            }
+                            catch (err) {
+                                $keys[k] = localStorage[k];
+                            }
+                        }
+                    }
+                }
+                setKeys($keys);
+                return [2 /*return*/];
+            });
+        });
+    }
+    (0, react_1.useEffect)(function () {
+        updateStore();
+    }, []);
+    (0, react_1.useEffect)(function () {
+        storageEmitter.addListener("store-changed", updateStore);
+        return function () {
+            storageEmitter.removeListener("store-changes", updateStore);
+        };
+    }, []);
+    return keys;
+}
+exports.useStorage = useStorage;
+exports.storage = {
+    set: function (k, v) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                if (typeof localStorage !== "undefined") {
+                    localStorage[k] = JSON.stringify(v);
+                    storageEmitter.emit("store-changed", v);
+                }
+                return [2 /*return*/];
+            });
+        });
+    },
+    remove: function (k) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                if (typeof localStorage !== "undefined") {
+                    localStorage.removeItem(k);
+                    storageEmitter.emit("store-changed", {});
+                }
+                return [2 /*return*/];
+            });
+        });
+    },
+};
 //# sourceMappingURL=index.js.map

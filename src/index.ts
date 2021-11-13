@@ -85,9 +85,15 @@ function useAtomCreate<R>(init: AtomType<R>) {
 
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
-      localStorage[`store-${init.name}`] = JSON.stringify(state);
+      if (init.localStoragePersistence) {
+        localStorage[`store-${init.name}`] = JSON.stringify(state);
+      } else {
+        if (typeof localStorage[`store-${init.name}`] !== "undefined") {
+          localStorage.removeItem(`store-${init.name}`);
+        }
+      }
     }
-  }, [init.name, state]);
+  }, [init.name, init.localStoragePersistence, state]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const actions = useMemo(() => init.actions || {}, []);
@@ -163,3 +169,63 @@ export function useActions<R>(atom: useAtomType<R>) {
   return atom()[2] as { [name: string]: (args?: any) => void };
 }
 export const useAtomActions = useActions;
+
+// localStorage utilities for web apps
+
+const storageEmitter = (() => {
+  const emm = new EventEmitter();
+  emm.setMaxListeners(10 ** 10);
+  return emm;
+})();
+
+export function useStorage(): {
+  [key: string]: any;
+} {
+  const [keys, setKeys] = useState({});
+
+  async function updateStore() {
+    let $keys: {
+      [key: string]: any;
+    } = {};
+
+    if (typeof localStorage !== "undefined") {
+      for (let k in localStorage) {
+        if (!k.match(/clear|getItem|key|length|removeItem|setItem/)) {
+          try {
+            $keys[k] = JSON.parse(localStorage[k]);
+          } catch (err) {
+            $keys[k] = localStorage[k];
+          }
+        }
+      }
+    }
+    setKeys($keys);
+  }
+
+  useEffect(() => {
+    updateStore();
+  }, []);
+
+  useEffect(() => {
+    storageEmitter.addListener("store-changed", updateStore);
+    return () => {
+      storageEmitter.removeListener("store-changes", updateStore);
+    };
+  }, []);
+  return keys;
+}
+
+export const storage = {
+  async set(k: string, v: any) {
+    if (typeof localStorage !== "undefined") {
+      localStorage[k] = JSON.stringify(v);
+      storageEmitter.emit("store-changed", v);
+    }
+  },
+  async remove(k: string) {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(k);
+      storageEmitter.emit("store-changed", {});
+    }
+  },
+};

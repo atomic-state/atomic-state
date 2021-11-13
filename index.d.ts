@@ -50,4 +50,11 @@ export declare function useActions<R>(atom: useAtomType<R>): {
     [name: string]: (args?: any) => void;
 };
 export declare const useAtomActions: typeof useActions;
+export declare function useStorage(): {
+    [key: string]: any;
+};
+export declare const storage: {
+    set(k: string, v: any): Promise<void>;
+    remove(k: string): Promise<void>;
+};
 export {};
