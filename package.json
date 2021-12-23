@@ -1,6 +1,6 @@
 {
   "name": "atomic-state",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "State managment library for React and React Native apps",
   "main": "index.js",
   "repository": {

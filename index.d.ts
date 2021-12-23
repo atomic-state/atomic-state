@@ -56,5 +56,6 @@ export declare function useStorage(): {
 export declare const storage: {
     set(k: string, v: any): Promise<void>;
     remove(k: string): Promise<void>;
+    get(k: string): any;
 };
 export {};

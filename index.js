@@ -234,5 +234,15 @@ exports.storage = {
             });
         });
     },
+    get: function (k) {
+        if (typeof localStorage !== "undefined") {
+            try {
+                return JSON.parse(localStorage[k]);
+            }
+            catch (err) {
+                return "";
+            }
+        }
+    },
 };
 //# sourceMappingURL=index.js.map
