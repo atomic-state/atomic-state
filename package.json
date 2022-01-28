@@ -1,11 +1,11 @@
 {
   "name": "atomic-state",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "State managment library for React and React Native apps",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/danybeltran/atomic-state"
+    "url": "https://github.com/atomic-state/atomic-state"
   },
   "scripts": {
     "test": "jest"
@@ -18,7 +18,7 @@
   ],
   "author": "Dany Beltran",
   "license": "MIT",
-  "homepage": "https://github.com/danybeltran/atomic-state#readme",
+  "homepage": "https://github.com/atomic-state/atomic-state#readme",
   "devDependencies": {
     "react": ">=16.13.1",
     "react-dom": ">=16.13.1",
