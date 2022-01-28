@@ -60,12 +60,12 @@ function createEmitter() {
 }
 function useAtomCreate(init) {
     var _this = this;
-    var hookCall = (0, react_1.useMemo)(function () { return ("" + Math.random()).split(".")[1]; }, []);
+    var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
     var initialValue = (function getInitialValue() {
         return init.localStoragePersistence
             ? typeof localStorage !== "undefined"
-                ? typeof localStorage["store-" + init.name] !== "undefined"
-                    ? JSON.parse(localStorage["store-" + init.name])
+                ? typeof localStorage["store-".concat(init.name)] !== "undefined"
+                    ? JSON.parse(localStorage["store-".concat(init.name)])
                     : init.default
                 : init.default
             : init.default;
@@ -99,11 +99,11 @@ function useAtomCreate(init) {
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
             if (init.localStoragePersistence) {
-                localStorage["store-" + init.name] = JSON.stringify(state);
+                localStorage["store-".concat(init.name)] = JSON.stringify(state);
             }
             else {
-                if (typeof localStorage["store-" + init.name] !== "undefined") {
-                    localStorage.removeItem("store-" + init.name);
+                if (typeof localStorage["store-".concat(init.name)] !== "undefined") {
+                    localStorage.removeItem("store-".concat(init.name));
                 }
             }
         }
@@ -124,11 +124,7 @@ function useAtomCreate(init) {
     }, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state]);
-    return [
-        state,
-        updateState,
-        __actions,
-    ];
+    return [state, updateState, __actions];
 }
 /**
  * Creates an atom containing state
@@ -169,6 +165,7 @@ function useActions(atom) {
 }
 exports.useActions = useActions;
 exports.useAtomActions = useActions;
+// Selectors section
 // localStorage utilities for web apps
 var storageEmitter = (function () {
     var emm = new events_1.EventEmitter();

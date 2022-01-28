@@ -17,9 +17,11 @@ type AtomType<T> = {
       args: any
       state: T
       dispatch: Dispatch<SetStateAction<T>>
-    }) => void
+    }) => any
   }
 }
+
+type ActionsObjectType = { [name: string]: (args?: any) => any }
 
 const atomEmitters: {
   [key: string]: {
@@ -114,11 +116,7 @@ function useAtomCreate<R>(init: AtomType<R>) {
     [state]
   )
 
-  return [
-    state,
-    updateState,
-    __actions as { [name: string]: (args?: any) => void },
-  ]
+  return [state, updateState, __actions as ActionsObjectType]
 }
 
 /**
@@ -132,18 +130,14 @@ export const createAtom = atom
 type useAtomType<R> = () => (
   | R
   | Dispatch<SetStateAction<R>>
-  | { [name: string]: (args?: any) => void }
+  | ActionsObjectType
 )[]
 
 /**
  * Get an atom's value and state setter
  */
 export function useAtom<R>(atom: useAtomType<R>) {
-  return atom() as [
-    R,
-    (cb: ((c: R) => R) | R) => void,
-    { [name: string]: (args?: any) => void }
-  ]
+  return atom() as [R, (cb: ((c: R) => R) | R) => void, ActionsObjectType]
 }
 
 /**
@@ -166,9 +160,11 @@ export const useAtomDispatch = useDispatch
  * Get the actions of the atom as reducers
  */
 export function useActions<R>(atom: useAtomType<R>) {
-  return atom()[2] as { [name: string]: (args?: any) => void }
+  return atom()[2] as ActionsObjectType
 }
 export const useAtomActions = useActions
+
+// Selectors section
 
 // localStorage utilities for web apps
 
