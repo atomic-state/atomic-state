@@ -14,25 +14,22 @@ declare type AtomType<T> = {
             args: any;
             state: T;
             dispatch: Dispatch<SetStateAction<T>>;
-        }) => void;
+        }) => any;
     };
+};
+declare type ActionsObjectType = {
+    [name: string]: (args?: any) => any;
 };
 /**
  * Creates an atom containing state
  */
-export declare function atom<R>(init: AtomType<R>): () => (R | Dispatch<SetStateAction<R>> | {
-    [name: string]: (args?: any) => void;
-})[];
+export declare function atom<R>(init: AtomType<R>): () => (ActionsObjectType | R | Dispatch<SetStateAction<R>>)[];
 export declare const createAtom: typeof atom;
-declare type useAtomType<R> = () => (R | Dispatch<SetStateAction<R>> | {
-    [name: string]: (args?: any) => void;
-})[];
+declare type useAtomType<R> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType)[];
 /**
  * Get an atom's value and state setter
  */
-export declare function useAtom<R>(atom: useAtomType<R>): [R, (cb: R | ((c: R) => R)) => void, {
-    [name: string]: (args?: any) => void;
-}];
+export declare function useAtom<R>(atom: useAtomType<R>): [R, (cb: R | ((c: R) => R)) => void, ActionsObjectType];
 /**
  * Get an atom's value
  */
@@ -46,9 +43,7 @@ export declare const useAtomDispatch: typeof useDispatch;
 /**
  * Get the actions of the atom as reducers
  */
-export declare function useActions<R>(atom: useAtomType<R>): {
-    [name: string]: (args?: any) => void;
-};
+export declare function useActions<R>(atom: useAtomType<R>): ActionsObjectType;
 export declare const useAtomActions: typeof useActions;
 export declare function useStorage(): {
     [key: string]: any;
