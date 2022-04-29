@@ -42,7 +42,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.storage = exports.useStorage = exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.createAtom = exports.atom = exports.AtomicState = void 0;
+exports.storage = exports.useStorage = exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.useFilter = exports.filter = exports.createAtom = exports.atom = exports.AtomicState = void 0;
 var events_1 = require("events");
 var react_1 = require("react");
 var atomEmitters = {};
@@ -61,10 +61,15 @@ function createEmitter() {
 var defaultAtomsValues = {};
 var pendingAtoms = {};
 var AtomicState = function (_a) {
-    var children = _a.children, atoms = _a.atoms;
+    var children = _a.children, atoms = _a.atoms, filters = _a.filters;
     if (atoms) {
         for (var atomKey in atoms) {
             defaultAtomsValues[atomKey] = atoms[atomKey];
+        }
+    }
+    if (filters) {
+        for (var filterKey in filters) {
+            defaultFiltersValues[filterKey] = filters[filterKey];
         }
     }
     return children;
@@ -140,7 +145,7 @@ function useAtomCreate(init) {
         return function () {
             pendingAtoms[init.name] = 0;
         };
-    }, [init.name]);
+    }, []);
     if (!atomEmitters[init.name]) {
         atomEmitters[init.name] = createEmitter();
     }
@@ -200,10 +205,24 @@ function useAtomCreate(init) {
  * Creates an atom containing state
  */
 function atom(init) {
-    return function () { return useAtomCreate(init); };
+    var useCreate = function () { return useAtomCreate(init); };
+    useCreate["atom-name"] = init.name;
+    return useCreate;
 }
 exports.atom = atom;
 exports.createAtom = atom;
+var defaultFiltersValues = {};
+function filter(_a) {
+    var name = _a.name, get = _a.get;
+    var useFilterGet = function () { return get({ get: useValue }); };
+    useFilterGet["filter-name"] = name;
+    return useFilterGet;
+}
+exports.filter = filter;
+function useFilter(f) {
+    return f() || defaultFiltersValues[f["filter-name"]];
+}
+exports.useFilter = useFilter;
 /**
  * Get an atom's value and state setter
  */
