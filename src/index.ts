@@ -6,11 +6,17 @@
  */
 
 import { EventEmitter } from "events"
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react"
+import React, {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 
 type AtomType<T> = {
   name: string
-  default: T
+  default?: T | (() => Promise<T>) | (() => T)
   localStoragePersistence?: boolean
   actions?: {
     [name: string]: (st: {
@@ -42,20 +48,97 @@ function createEmitter() {
   }
 }
 
+const defaultAtomsValues: any = {}
+const pendingAtoms: any = {}
+
+export const AtomicState: React.FC<{
+  children: any
+  /**
+   * Set default values using an atom's key
+   */
+  atoms?: {
+    [key: string]: any
+  }
+}> = ({ children, atoms }) => {
+  if (atoms) {
+    for (let atomKey in atoms) {
+      defaultAtomsValues[atomKey] = atoms[atomKey]
+    }
+  }
+  return children
+}
+
 function useAtomCreate<R>(init: AtomType<R>) {
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
+  const isNumber = typeof init.default === "number"
+
   const initialValue = (function getInitialValue() {
-    return init.localStoragePersistence
-      ? typeof localStorage !== "undefined"
-        ? typeof localStorage[`store-${init.name}`] !== "undefined"
-          ? JSON.parse(localStorage[`store-${init.name}`])
-          : init.default
-        : init.default
-      : init.default
+    const isFunction = typeof init.default === "function"
+    const initVal =
+      init.default || isNumber ? init.default : defaultAtomsValues[init.name]
+    try {
+      return init.localStoragePersistence
+        ? typeof localStorage !== "undefined"
+          ? typeof localStorage[`store-${init.name}`] !== "undefined"
+            ? JSON.parse(localStorage[`store-${init.name}`])
+            : isFunction
+            ? undefined
+            : initVal
+          : isFunction
+          ? undefined
+          : initVal
+        : isFunction
+        ? undefined
+        : initVal
+    } catch (err) {
+      return initVal
+    }
   })()
 
-  const [state, setState] = useState<R>(initialValue)
+  const [state, setState] = useState<R>(
+    initialValue instanceof Promise ? undefined : initialValue
+  )
+
+  if (!pendingAtoms[init.name]) {
+    pendingAtoms[init.name] = 0
+  }
+
+  useEffect(() => {
+    async function getPromiseInitialValue() {
+      if (pendingAtoms[init.name] === 0) {
+        pendingAtoms[init.name] += 1
+        let v = init.default
+          ? (async () =>
+              typeof init.default === "function"
+                ? (init.default as () => Promise<R>)()
+                : init.default)()
+          : undefined
+        if (v) {
+          v.then((val) => {
+            defaultAtomsValues[init.name] = val
+            setState(val as R)
+          })
+        }
+      } else {
+        pendingAtoms[init.name] += 1
+        if (state || defaultAtomsValues[init.name]) {
+          atomEmitters[init.name].notify(
+            init.name,
+            hookCall,
+            state || defaultAtomsValues[init.name]
+          )
+        }
+      }
+    }
+    getPromiseInitialValue()
+  }, [state, init.default, init.name, hookCall])
+
+  useEffect(() => {
+    return () => {
+      pendingAtoms[init.name] = 0
+    }
+  }, [init.name])
 
   if (!atomEmitters[init.name]) {
     atomEmitters[init.name] = createEmitter()

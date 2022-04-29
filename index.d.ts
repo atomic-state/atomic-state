@@ -4,10 +4,10 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import { Dispatch, SetStateAction } from "react";
+import React, { Dispatch, SetStateAction } from "react";
 declare type AtomType<T> = {
     name: string;
-    default: T;
+    default?: T | (() => Promise<T>) | (() => T);
     localStoragePersistence?: boolean;
     actions?: {
         [name: string]: (st: {
@@ -20,10 +20,19 @@ declare type AtomType<T> = {
 declare type ActionsObjectType = {
     [name: string]: (args?: any) => any;
 };
+export declare const AtomicState: React.FC<{
+    children: any;
+    /**
+     * Set default values using an atom's key
+     */
+    atoms?: {
+        [key: string]: any;
+    };
+}>;
 /**
  * Creates an atom containing state
  */
-export declare function atom<R>(init: AtomType<R>): () => (ActionsObjectType | R | Dispatch<SetStateAction<R>>)[];
+export declare function atom<R>(init: AtomType<R>): () => (ActionsObjectType | R | React.Dispatch<React.SetStateAction<R>>)[];
 export declare const createAtom: typeof atom;
 declare type useAtomType<R> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType)[];
 /**
