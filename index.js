@@ -42,7 +42,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.storage = exports.useStorage = exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.createAtom = exports.atom = void 0;
+exports.storage = exports.useStorage = exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.createAtom = exports.atom = exports.AtomicState = void 0;
 var events_1 = require("events");
 var react_1 = require("react");
 var atomEmitters = {};
@@ -58,19 +58,89 @@ function createEmitter() {
         notify: notify,
     };
 }
+var defaultAtomsValues = {};
+var pendingAtoms = {};
+var AtomicState = function (_a) {
+    var children = _a.children, atoms = _a.atoms;
+    if (atoms) {
+        for (var atomKey in atoms) {
+            defaultAtomsValues[atomKey] = atoms[atomKey];
+        }
+    }
+    return children;
+};
+exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
+    var isNumber = typeof init.default === "number";
     var initialValue = (function getInitialValue() {
-        return init.localStoragePersistence
-            ? typeof localStorage !== "undefined"
-                ? typeof localStorage["store-".concat(init.name)] !== "undefined"
-                    ? JSON.parse(localStorage["store-".concat(init.name)])
-                    : init.default
-                : init.default
-            : init.default;
+        var isFunction = typeof init.default === "function";
+        var initVal = init.default || isNumber ? init.default : defaultAtomsValues[init.name];
+        try {
+            return init.localStoragePersistence
+                ? typeof localStorage !== "undefined"
+                    ? typeof localStorage["store-".concat(init.name)] !== "undefined"
+                        ? JSON.parse(localStorage["store-".concat(init.name)])
+                        : isFunction
+                            ? undefined
+                            : initVal
+                    : isFunction
+                        ? undefined
+                        : initVal
+                : isFunction
+                    ? undefined
+                    : initVal;
+        }
+        catch (err) {
+            return initVal;
+        }
     })();
-    var _a = (0, react_1.useState)(initialValue), state = _a[0], setState = _a[1];
+    var _a = (0, react_1.useState)(initialValue instanceof Promise ? undefined : initialValue), state = _a[0], setState = _a[1];
+    if (!pendingAtoms[init.name]) {
+        pendingAtoms[init.name] = 0;
+    }
+    (0, react_1.useEffect)(function () {
+        function getPromiseInitialValue() {
+            return __awaiter(this, void 0, void 0, function () {
+                var v;
+                var _this = this;
+                return __generator(this, function (_a) {
+                    if (pendingAtoms[init.name] === 0) {
+                        pendingAtoms[init.name] += 1;
+                        v = init.default
+                            ? (function () { return __awaiter(_this, void 0, void 0, function () {
+                                return __generator(this, function (_a) {
+                                    return [2 /*return*/, typeof init.default === "function"
+                                            ? init.default()
+                                            : init.default];
+                                });
+                            }); })()
+                            : undefined;
+                        if (v) {
+                            v.then(function (val) {
+                                defaultAtomsValues[init.name] = val;
+                                setState(val);
+                            });
+                        }
+                    }
+                    else {
+                        pendingAtoms[init.name] += 1;
+                        if (state || defaultAtomsValues[init.name]) {
+                            atomEmitters[init.name].notify(init.name, hookCall, state || defaultAtomsValues[init.name]);
+                        }
+                    }
+                    return [2 /*return*/];
+                });
+            });
+        }
+        getPromiseInitialValue();
+    }, [state, init.default, init.name, hookCall]);
+    (0, react_1.useEffect)(function () {
+        return function () {
+            pendingAtoms[init.name] = 0;
+        };
+    }, [init.name]);
     if (!atomEmitters[init.name]) {
         atomEmitters[init.name] = createEmitter();
     }
