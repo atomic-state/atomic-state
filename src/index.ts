@@ -59,10 +59,21 @@ export const AtomicState: React.FC<{
   atoms?: {
     [key: string]: any
   }
-}> = ({ children, atoms }) => {
+  /**
+   * Set default filters' values using filter key
+   */
+  filters?: {
+    [key: string]: any
+  }
+}> = ({ children, atoms, filters }) => {
   if (atoms) {
     for (let atomKey in atoms) {
       defaultAtomsValues[atomKey] = atoms[atomKey]
+    }
+  }
+  if (filters) {
+    for (let filterKey in filters) {
+      defaultFiltersValues[filterKey] = filters[filterKey]
     }
   }
   return children
@@ -138,7 +149,7 @@ function useAtomCreate<R>(init: AtomType<R>) {
     return () => {
       pendingAtoms[init.name] = 0
     }
-  }, [init.name])
+  }, [])
 
   if (!atomEmitters[init.name]) {
     atomEmitters[init.name] = createEmitter()
@@ -206,7 +217,9 @@ function useAtomCreate<R>(init: AtomType<R>) {
  * Creates an atom containing state
  */
 export function atom<R>(init: AtomType<R>) {
-  return () => useAtomCreate<R>(init)
+  const useCreate = () => useAtomCreate<R>(init)
+  useCreate["atom-name"] = init.name
+  return useCreate
 }
 export const createAtom = atom
 
@@ -215,6 +228,23 @@ type useAtomType<R> = () => (
   | Dispatch<SetStateAction<R>>
   | ActionsObjectType
 )[]
+
+type filterCreateType<T> = {
+  name?: string
+  get(c: { get<R>(atom: useAtomType<R>): R }): T
+}
+
+const defaultFiltersValues: any = {}
+
+export function filter<R>({ name, get: get }: filterCreateType<R>) {
+  const useFilterGet = () => get({ get: useValue })
+  useFilterGet["filter-name"] = name
+  return useFilterGet
+}
+
+export function useFilter<T>(f: () => T) {
+  return f() || (defaultFiltersValues[(f as any)["filter-name"]] as T)
+}
 
 /**
  * Get an atom's value and state setter

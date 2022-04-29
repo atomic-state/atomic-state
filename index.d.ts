@@ -28,13 +28,33 @@ export declare const AtomicState: React.FC<{
     atoms?: {
         [key: string]: any;
     };
+    /**
+     * Set default filters' values using filter key
+     */
+    filters?: {
+        [key: string]: any;
+    };
 }>;
 /**
  * Creates an atom containing state
  */
-export declare function atom<R>(init: AtomType<R>): () => (ActionsObjectType | R | React.Dispatch<React.SetStateAction<R>>)[];
+export declare function atom<R>(init: AtomType<R>): {
+    (): (ActionsObjectType | R | React.Dispatch<React.SetStateAction<R>>)[];
+    "atom-name": string;
+};
 export declare const createAtom: typeof atom;
 declare type useAtomType<R> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType)[];
+declare type filterCreateType<T> = {
+    name?: string;
+    get(c: {
+        get<R>(atom: useAtomType<R>): R;
+    }): T;
+};
+export declare function filter<R>({ name, get: get }: filterCreateType<R>): {
+    (): R;
+    "filter-name": string | undefined;
+};
+export declare function useFilter<T>(f: () => T): T;
 /**
  * Get an atom's value and state setter
  */
