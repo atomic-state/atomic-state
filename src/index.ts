@@ -173,10 +173,13 @@ function useAtomCreate<R>(init: AtomType<R>) {
   }, [])
 
   const updateState: Dispatch<SetStateAction<R>> = (v) => {
-    // First notify other subscribers
-    notify(init.name, hookCall, v)
-    // Finally update state
-    setState(v)
+    setState((previous) => {
+      // First notify other subscribers
+      const newValue = typeof v === "function" ? (v as any)(previous) : v
+      notify(init.name, hookCall, newValue)
+      // Finally update state
+      return newValue
+    })
   }
 
   useEffect(() => {

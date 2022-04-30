@@ -166,10 +166,13 @@ function useAtomCreate(init) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     var updateState = function (v) {
-        // First notify other subscribers
-        notify(init.name, hookCall, v);
-        // Finally update state
-        setState(v);
+        setState(function (previous) {
+            // First notify other subscribers
+            var newValue = typeof v === "function" ? v(previous) : v;
+            notify(init.name, hookCall, newValue);
+            // Finally update state
+            return newValue;
+        });
     };
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
