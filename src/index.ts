@@ -120,29 +120,32 @@ function useAtomCreate<R>(init: AtomType<R>) {
 
   useEffect(() => {
     async function getPromiseInitialValue() {
-      if (typeof init.default === "function") {
-        if (pendingAtoms[init.name] === 0) {
-          pendingAtoms[init.name] += 1
-          let v = init.default
-            ? (async () =>
-                typeof init.default === "function"
-                  ? (init.default as () => Promise<R>)()
-                  : init.default)()
-            : undefined
-          if (v) {
-            v.then((val) => {
-              defaultAtomsValues[init.name] = val
-              setState(val as R)
-            })
-          }
-        } else {
-          pendingAtoms[init.name] += 1
-          if (state || defaultAtomsValues[init.name]) {
-            atomEmitters[init.name].notify(
-              init.name,
-              hookCall,
-              state || defaultAtomsValues[init.name]
-            )
+      // Only resolve promise if default or resolved value are not present
+      if (!defaultAtomsValues[init.name]) {
+        if (typeof init.default === "function") {
+          if (pendingAtoms[init.name] === 0) {
+            pendingAtoms[init.name] += 1
+            let v = init.default
+              ? (async () =>
+                  typeof init.default === "function"
+                    ? (init.default as () => Promise<R>)()
+                    : init.default)()
+              : undefined
+            if (v) {
+              v.then((val) => {
+                defaultAtomsValues[init.name] = val
+                setState(val as R)
+              })
+            }
+          } else {
+            pendingAtoms[init.name] += 1
+            if (state || defaultAtomsValues[init.name]) {
+              atomEmitters[init.name].notify(
+                init.name,
+                hookCall,
+                state || defaultAtomsValues[init.name]
+              )
+            }
           }
         }
       }

@@ -1,6 +1,6 @@
 {
   "name": "atomic-state",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "description": "State managment library for React",
   "main": "index.js",
   "repository": {

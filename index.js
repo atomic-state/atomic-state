@@ -115,29 +115,32 @@ function useAtomCreate(init) {
                 var v;
                 var _this = this;
                 return __generator(this, function (_a) {
-                    if (typeof init.default === "function") {
-                        if (pendingAtoms[init.name] === 0) {
-                            pendingAtoms[init.name] += 1;
-                            v = init.default
-                                ? (function () { return __awaiter(_this, void 0, void 0, function () {
-                                    return __generator(this, function (_a) {
-                                        return [2 /*return*/, typeof init.default === "function"
-                                                ? init.default()
-                                                : init.default];
+                    // Only resolve promise if default or resolved value are not present
+                    if (!defaultAtomsValues[init.name]) {
+                        if (typeof init.default === "function") {
+                            if (pendingAtoms[init.name] === 0) {
+                                pendingAtoms[init.name] += 1;
+                                v = init.default
+                                    ? (function () { return __awaiter(_this, void 0, void 0, function () {
+                                        return __generator(this, function (_a) {
+                                            return [2 /*return*/, typeof init.default === "function"
+                                                    ? init.default()
+                                                    : init.default];
+                                        });
+                                    }); })()
+                                    : undefined;
+                                if (v) {
+                                    v.then(function (val) {
+                                        defaultAtomsValues[init.name] = val;
+                                        setState(val);
                                     });
-                                }); })()
-                                : undefined;
-                            if (v) {
-                                v.then(function (val) {
-                                    defaultAtomsValues[init.name] = val;
-                                    setState(val);
-                                });
+                                }
                             }
-                        }
-                        else {
-                            pendingAtoms[init.name] += 1;
-                            if (state || defaultAtomsValues[init.name]) {
-                                atomEmitters[init.name].notify(init.name, hookCall, state || defaultAtomsValues[init.name]);
+                            else {
+                                pendingAtoms[init.name] += 1;
+                                if (state || defaultAtomsValues[init.name]) {
+                                    atomEmitters[init.name].notify(init.name, hookCall, state || defaultAtomsValues[init.name]);
+                                }
                             }
                         }
                     }
