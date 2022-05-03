@@ -179,7 +179,7 @@ function useAtomCreate(init) {
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
             if (init.localStoragePersistence) {
-                localStorage["store-".concat(init.name)] = JSON.stringify(state);
+                localStorage.setItem("store-".concat(init.name), JSON.stringify(state));
             }
             else {
                 if (typeof localStorage["store-".concat(init.name)] !== "undefined") {
@@ -307,8 +307,10 @@ exports.storage = {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 if (typeof localStorage !== "undefined") {
-                    localStorage[k] = JSON.stringify(v);
-                    storageEmitter.emit("store-changed", v);
+                    if (typeof localStorage.setItem === "function") {
+                        localStorage.setItem(k, JSON.stringify(v));
+                        storageEmitter.emit("store-changed", v);
+                    }
                 }
                 return [2 /*return*/];
             });
@@ -318,8 +320,10 @@ exports.storage = {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 if (typeof localStorage !== "undefined") {
-                    localStorage.removeItem(k);
-                    storageEmitter.emit("store-changed", {});
+                    if (typeof localStorage.removeItem === "function") {
+                        localStorage.removeItem(k);
+                        storageEmitter.emit("store-changed", {});
+                    }
                 }
                 return [2 /*return*/];
             });
@@ -327,11 +331,21 @@ exports.storage = {
     },
     get: function (k) {
         if (typeof localStorage !== "undefined") {
-            try {
-                return JSON.parse(localStorage[k]);
+            if (typeof localStorage.getItem === "function") {
+                try {
+                    return JSON.parse(localStorage.getItem(k));
+                }
+                catch (err) {
+                    return "";
+                }
             }
-            catch (err) {
-                return "";
+            else {
+                try {
+                    return JSON.parse(localStorage[k]);
+                }
+                catch (err) {
+                    return "";
+                }
             }
         }
     },

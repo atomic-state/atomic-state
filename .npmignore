@@ -2,6 +2,8 @@ __tests__
 tests
 src
 .npmignore
+documentation
+.github
 .gitignore
 mocks
 babel.config.js

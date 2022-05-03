@@ -92,7 +92,7 @@ function useAtomCreate<R>(init: AtomType<R>) {
       return init.localStoragePersistence
         ? typeof localStorage !== "undefined"
           ? typeof localStorage[`store-${init.name}`] !== "undefined"
-            ? JSON.parse(localStorage[`store-${init.name}`])
+            ? JSON.parse(localStorage[`store-${init.name}`] as string)
             : isFunction
             ? undefined
             : initVal
@@ -187,7 +187,7 @@ function useAtomCreate<R>(init: AtomType<R>) {
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
       if (init.localStoragePersistence) {
-        localStorage[`store-${init.name}`] = JSON.stringify(state)
+        localStorage.setItem(`store-${init.name}`, JSON.stringify(state))
       } else {
         if (typeof localStorage[`store-${init.name}`] !== "undefined") {
           localStorage.removeItem(`store-${init.name}`)
@@ -332,22 +332,34 @@ export function useStorage(): {
 export const storage = {
   async set(k: string, v: any) {
     if (typeof localStorage !== "undefined") {
-      localStorage[k] = JSON.stringify(v)
-      storageEmitter.emit("store-changed", v)
+      if (typeof localStorage.setItem === "function") {
+        localStorage.setItem(k, JSON.stringify(v))
+        storageEmitter.emit("store-changed", v)
+      }
     }
   },
   async remove(k: string) {
     if (typeof localStorage !== "undefined") {
-      localStorage.removeItem(k)
-      storageEmitter.emit("store-changed", {})
+      if (typeof localStorage.removeItem === "function") {
+        localStorage.removeItem(k)
+        storageEmitter.emit("store-changed", {})
+      }
     }
   },
   get(k: string) {
     if (typeof localStorage !== "undefined") {
-      try {
-        return JSON.parse(localStorage[k])
-      } catch (err) {
-        return ""
+      if (typeof localStorage.getItem === "function") {
+        try {
+          return JSON.parse(localStorage.getItem(k) as string)
+        } catch (err) {
+          return ""
+        }
+      } else {
+        try {
+          return JSON.parse(localStorage[k])
+        } catch (err) {
+          return ""
+        }
       }
     }
   },
