@@ -240,7 +240,10 @@ function filter(_a) {
     };
     var useFilterGet = function () {
         var initialValue = defaultFiltersValues["".concat(name)] || get(getObject);
-        var _a = (0, react_1.useState)(initialValue instanceof Promise && typeof initialValue === "undefined"
+        (0, react_1.useEffect)(function () {
+            get(getObject);
+        }, []);
+        var _a = (0, react_1.useState)(initialValue instanceof Promise || typeof initialValue === "undefined"
             ? undefined
             : initialValue), filterValue = _a[0], setFilterValue = _a[1];
         (0, react_1.useEffect)(function () {
