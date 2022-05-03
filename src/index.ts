@@ -82,12 +82,15 @@ export const AtomicState: React.FC<{
 function useAtomCreate<R>(init: AtomType<R>) {
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
-  const isNumber = typeof init.default === "number"
+  const isDefined = typeof init.default !== "undefined"
 
   const initialValue = (function getInitialValue() {
     const isFunction = typeof init.default === "function"
-    const initVal =
-      init.default || isNumber ? init.default : defaultAtomsValues[init.name]
+    const initVal = isDefined
+      ? typeof defaultAtomsValues[init.name] === "undefined"
+        ? init.default
+        : defaultAtomsValues[init.name]
+      : defaultAtomsValues[init.name]
     try {
       return init.localStoragePersistence
         ? typeof localStorage !== "undefined"
@@ -178,6 +181,7 @@ function useAtomCreate<R>(init: AtomType<R>) {
     setState((previous) => {
       // First notify other subscribers
       const newValue = typeof v === "function" ? (v as any)(previous) : v
+      defaultAtomsValues[init.name] = newValue
       notify(init.name, hookCall, newValue)
       // Finally update state
       return newValue

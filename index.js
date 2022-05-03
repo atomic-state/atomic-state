@@ -78,10 +78,14 @@ exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
-    var isNumber = typeof init.default === "number";
+    var isDefined = typeof init.default !== "undefined";
     var initialValue = (function getInitialValue() {
         var isFunction = typeof init.default === "function";
-        var initVal = init.default || isNumber ? init.default : defaultAtomsValues[init.name];
+        var initVal = isDefined
+            ? typeof defaultAtomsValues[init.name] === "undefined"
+                ? init.default
+                : defaultAtomsValues[init.name]
+            : defaultAtomsValues[init.name];
         try {
             return init.localStoragePersistence
                 ? typeof localStorage !== "undefined"
@@ -171,6 +175,7 @@ function useAtomCreate(init) {
         setState(function (previous) {
             // First notify other subscribers
             var newValue = typeof v === "function" ? v(previous) : v;
+            defaultAtomsValues[init.name] = newValue;
             notify(init.name, hookCall, newValue);
             // Finally update state
             return newValue;
