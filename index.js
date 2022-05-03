@@ -238,9 +238,12 @@ function filter(_a) {
             return defaultAtomsValues[atom["atom-name"]];
         },
     };
-    var initialValue = defaultFiltersValues["".concat(name)] || get(getObject);
     var useFilterGet = function () {
-        var _a = (0, react_1.useState)(initialValue instanceof Promise ? undefined : initialValue), filterValue = _a[0], setFilterValue = _a[1];
+        var initialValue = defaultFiltersValues["".concat(name)] || get(getObject);
+        var _a = (0, react_1.useState)(initialValue instanceof Promise && typeof initialValue === "undefined"
+            ? undefined
+            : initialValue), filterValue = _a[0], setFilterValue = _a[1];
+        console.log(defaultFiltersValues);
         (0, react_1.useEffect)(function () {
             var _a;
             function renderValue(e) {
@@ -267,7 +270,7 @@ function filter(_a) {
                     (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.removeListener(dep, renderValue);
                 }
             };
-        }, []);
+        }, [filterValue]);
         return filterValue;
     };
     useFilterGet["filter-name"] = name;

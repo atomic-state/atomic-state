@@ -268,13 +268,16 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
     },
   }
 
-  const initialValue = defaultFiltersValues[`${name}`] || get(getObject)
-
   const useFilterGet = () => {
+    const initialValue = defaultFiltersValues[`${name}`] || get(getObject)
+
     const [filterValue, setFilterValue] = useState<R>(
-      initialValue instanceof Promise ? undefined : initialValue
+      initialValue instanceof Promise && typeof initialValue === "undefined"
+        ? undefined
+        : initialValue
     )
 
+    console.log(defaultFiltersValues)
     useEffect(() => {
       function renderValue(e: any) {
         setTimeout(() => {
@@ -298,7 +301,8 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
           atomEmitters[dep]?.emitter.removeListener(dep, renderValue)
         }
       }
-    }, [])
+    }, [filterValue])
+
     return filterValue
   }
   useFilterGet["filter-name"] = name
