@@ -16,7 +16,7 @@ import React, {
 
 type AtomType<T> = {
   name: string
-  default?: T | (() => Promise<T>) | (() => T)
+  default?: T | Promise<T> | (() => Promise<T>) | (() => T)
   localStoragePersistence?: boolean
   actions?: {
     [name: string]: (st: {
