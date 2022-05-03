@@ -16,7 +16,7 @@ import React, {
 
 type AtomType<T> = {
   name: string
-  default?: T | (() => Promise<T>) | (() => T)
+  default?: T | Promise<T> | (() => Promise<T>) | (() => T)
   localStoragePersistence?: boolean
   actions?: {
     [name: string]: (st: {
@@ -117,28 +117,30 @@ function useAtomCreate<R>(init: AtomType<R>) {
 
   useEffect(() => {
     async function getPromiseInitialValue() {
-      if (pendingAtoms[init.name] === 0) {
-        pendingAtoms[init.name] += 1
-        let v = init.default
-          ? (async () =>
-              typeof init.default === "function"
-                ? (init.default as () => Promise<R>)()
-                : init.default)()
-          : undefined
-        if (v) {
-          v.then((val) => {
-            defaultAtomsValues[init.name] = val
-            setState(val as R)
-          })
-        }
-      } else {
-        pendingAtoms[init.name] += 1
-        if (state || defaultAtomsValues[init.name]) {
-          atomEmitters[init.name].notify(
-            init.name,
-            hookCall,
-            state || defaultAtomsValues[init.name]
-          )
+      if (typeof init.default === "function") {
+        if (pendingAtoms[init.name] === 0) {
+          pendingAtoms[init.name] += 1
+          let v = init.default
+            ? (async () =>
+                typeof init.default === "function"
+                  ? (init.default as () => Promise<R>)()
+                  : init.default)()
+            : undefined
+          if (v) {
+            v.then((val) => {
+              defaultAtomsValues[init.name] = val
+              setState(val as R)
+            })
+          }
+        } else {
+          pendingAtoms[init.name] += 1
+          if (state || defaultAtomsValues[init.name]) {
+            atomEmitters[init.name].notify(
+              init.name,
+              hookCall,
+              state || defaultAtomsValues[init.name]
+            )
+          }
         }
       }
     }
