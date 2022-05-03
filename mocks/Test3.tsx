@@ -1,10 +1,6 @@
-import React from "react"
-import { atom, useDispatch, useFilter, filter } from "../"
-
-const clicks = atom({
-  name: "clicks-count",
-  default: 0,
-})
+import React, { useEffect } from "react"
+import {  useDispatch, useFilter, filter } from "../"
+import { clicks } from "./atoms"
 
 const clicksFilter = filter<number>({
   name: "clicksFilter",
@@ -21,6 +17,10 @@ export const RenderCountDouble = () => {
 
 export const IncreaseButton2 = () => {
   const setAtomValue = useDispatch(clicks)
+  useEffect(() => {
+    // Reset count when mounting to prevent conflicts with other tests
+    setAtomValue(0)
+  }, [])
   return (
     <div>
       <button onClick={() => setAtomValue((value) => value + 1)}>

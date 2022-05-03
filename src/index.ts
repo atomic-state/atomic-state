@@ -82,12 +82,15 @@ export const AtomicState: React.FC<{
 function useAtomCreate<R>(init: AtomType<R>) {
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
-  const isNumber = typeof init.default === "number"
+  const isDefined = typeof init.default !== "undefined"
 
   const initialValue = (function getInitialValue() {
     const isFunction = typeof init.default === "function"
-    const initVal =
-      init.default || isNumber ? init.default : defaultAtomsValues[init.name]
+    const initVal = isDefined
+      ? typeof defaultAtomsValues[init.name] === "undefined"
+        ? init.default
+        : defaultAtomsValues[init.name]
+      : defaultAtomsValues[init.name]
     try {
       return init.localStoragePersistence
         ? typeof localStorage !== "undefined"
@@ -117,29 +120,32 @@ function useAtomCreate<R>(init: AtomType<R>) {
 
   useEffect(() => {
     async function getPromiseInitialValue() {
-      if (typeof init.default === "function") {
-        if (pendingAtoms[init.name] === 0) {
-          pendingAtoms[init.name] += 1
-          let v = init.default
-            ? (async () =>
-                typeof init.default === "function"
-                  ? (init.default as () => Promise<R>)()
-                  : init.default)()
-            : undefined
-          if (v) {
-            v.then((val) => {
-              defaultAtomsValues[init.name] = val
-              setState(val as R)
-            })
-          }
-        } else {
-          pendingAtoms[init.name] += 1
-          if (state || defaultAtomsValues[init.name]) {
-            atomEmitters[init.name].notify(
-              init.name,
-              hookCall,
-              state || defaultAtomsValues[init.name]
-            )
+      // Only resolve promise if default or resolved value are not present
+      if (!defaultAtomsValues[init.name]) {
+        if (typeof init.default === "function") {
+          if (pendingAtoms[init.name] === 0) {
+            pendingAtoms[init.name] += 1
+            let v = init.default
+              ? (async () =>
+                  typeof init.default === "function"
+                    ? (init.default as () => Promise<R>)()
+                    : init.default)()
+              : undefined
+            if (v) {
+              v.then((val) => {
+                defaultAtomsValues[init.name] = val
+                setState(val as R)
+              })
+            }
+          } else {
+            pendingAtoms[init.name] += 1
+            if (state || defaultAtomsValues[init.name]) {
+              atomEmitters[init.name].notify(
+                init.name,
+                hookCall,
+                state || defaultAtomsValues[init.name]
+              )
+            }
           }
         }
       }
@@ -178,6 +184,7 @@ function useAtomCreate<R>(init: AtomType<R>) {
     setState((previous) => {
       // First notify other subscribers
       const newValue = typeof v === "function" ? (v as any)(previous) : v
+      defaultAtomsValues[init.name] = newValue
       notify(init.name, hookCall, newValue)
       // Finally update state
       return newValue

@@ -1,18 +1,14 @@
-import React from "react";
-import { atom, useAtom } from "../";
-
-const nameAtom = atom({
-  name: "user-name",
-  default: "",
-});
+import React from "react"
+import { useAtom } from "../"
+import { nameAtom } from "./atoms"
 
 export const NameDisplay = () => {
-  const [name] = useAtom(nameAtom);
-  return <p>Username: {name}</p>;
-};
+  const [name] = useAtom(nameAtom)
+  return <p>Username: {name}</p>
+}
 
 export const NameField = () => {
-  const [name, setName] = useAtom(nameAtom);
+  const [name, setName] = useAtom(nameAtom)
   return (
     <div>
       <input
@@ -22,5 +18,5 @@ export const NameField = () => {
         onChange={(e) => setName(e.target.value)}
       />
     </div>
-  );
-};
+  )
+}

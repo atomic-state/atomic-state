@@ -78,10 +78,14 @@ exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
-    var isNumber = typeof init.default === "number";
+    var isDefined = typeof init.default !== "undefined";
     var initialValue = (function getInitialValue() {
         var isFunction = typeof init.default === "function";
-        var initVal = init.default || isNumber ? init.default : defaultAtomsValues[init.name];
+        var initVal = isDefined
+            ? typeof defaultAtomsValues[init.name] === "undefined"
+                ? init.default
+                : defaultAtomsValues[init.name]
+            : defaultAtomsValues[init.name];
         try {
             return init.localStoragePersistence
                 ? typeof localStorage !== "undefined"
@@ -111,29 +115,32 @@ function useAtomCreate(init) {
                 var v;
                 var _this = this;
                 return __generator(this, function (_a) {
-                    if (typeof init.default === "function") {
-                        if (pendingAtoms[init.name] === 0) {
-                            pendingAtoms[init.name] += 1;
-                            v = init.default
-                                ? (function () { return __awaiter(_this, void 0, void 0, function () {
-                                    return __generator(this, function (_a) {
-                                        return [2 /*return*/, typeof init.default === "function"
-                                                ? init.default()
-                                                : init.default];
+                    // Only resolve promise if default or resolved value are not present
+                    if (!defaultAtomsValues[init.name]) {
+                        if (typeof init.default === "function") {
+                            if (pendingAtoms[init.name] === 0) {
+                                pendingAtoms[init.name] += 1;
+                                v = init.default
+                                    ? (function () { return __awaiter(_this, void 0, void 0, function () {
+                                        return __generator(this, function (_a) {
+                                            return [2 /*return*/, typeof init.default === "function"
+                                                    ? init.default()
+                                                    : init.default];
+                                        });
+                                    }); })()
+                                    : undefined;
+                                if (v) {
+                                    v.then(function (val) {
+                                        defaultAtomsValues[init.name] = val;
+                                        setState(val);
                                     });
-                                }); })()
-                                : undefined;
-                            if (v) {
-                                v.then(function (val) {
-                                    defaultAtomsValues[init.name] = val;
-                                    setState(val);
-                                });
+                                }
                             }
-                        }
-                        else {
-                            pendingAtoms[init.name] += 1;
-                            if (state || defaultAtomsValues[init.name]) {
-                                atomEmitters[init.name].notify(init.name, hookCall, state || defaultAtomsValues[init.name]);
+                            else {
+                                pendingAtoms[init.name] += 1;
+                                if (state || defaultAtomsValues[init.name]) {
+                                    atomEmitters[init.name].notify(init.name, hookCall, state || defaultAtomsValues[init.name]);
+                                }
                             }
                         }
                     }
@@ -171,6 +178,7 @@ function useAtomCreate(init) {
         setState(function (previous) {
             // First notify other subscribers
             var newValue = typeof v === "function" ? v(previous) : v;
+            defaultAtomsValues[init.name] = newValue;
             notify(init.name, hookCall, newValue);
             // Finally update state
             return newValue;
