@@ -248,9 +248,6 @@ function filter(_a) {
                     var newValue = get(getObject);
                     if (newValue instanceof Promise) {
                         newValue.then(function (v) {
-                            console.log({
-                                v: v,
-                            });
                             defaultFiltersValues["".concat(name)] = newValue;
                             setFilterValue(v);
                         });

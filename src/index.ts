@@ -281,9 +281,6 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
           const newValue = get(getObject)
           if (newValue instanceof Promise) {
             newValue.then((v) => {
-              console.log({
-                v,
-              })
               defaultFiltersValues[`${name}`] = newValue
               setFilterValue(v)
             })
