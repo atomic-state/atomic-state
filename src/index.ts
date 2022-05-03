@@ -9,6 +9,7 @@ import { EventEmitter } from "events"
 import React, {
   Dispatch,
   SetStateAction,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -85,7 +86,10 @@ function useAtomCreate<R>(init: AtomType<R>) {
   const isDefined = typeof init.default !== "undefined"
 
   const initialValue = (function getInitialValue() {
-    const isFunction = typeof init.default === "function"
+    const isFunction =
+      typeof defaultAtomsValues[init.name] === "undefined" &&
+      typeof init.default === "function"
+
     const initVal = isDefined
       ? typeof defaultAtomsValues[init.name] === "undefined"
         ? init.default
@@ -111,30 +115,53 @@ function useAtomCreate<R>(init: AtomType<R>) {
   })()
 
   const [state, setState] = useState<R>(
-    initialValue instanceof Promise ? undefined : initialValue
+    (initialValue instanceof Promise || typeof initialValue === "function") &&
+      typeof defaultAtomsValues[init.name] === "undefined"
+      ? undefined
+      : initialValue
   )
 
   if (!pendingAtoms[init.name]) {
     pendingAtoms[init.name] = 0
   }
 
+  if (!atomEmitters[init.name]) {
+    atomEmitters[init.name] = createEmitter()
+  }
+
+  const { emitter, notify } = atomEmitters[init.name]
+
+  const updateState: Dispatch<SetStateAction<R>> = useCallback(
+    (v) => {
+      setState((previous) => {
+        // First notify other subscribers
+        const newValue = typeof v === "function" ? (v as any)(previous) : v
+        defaultAtomsValues[init.name] = newValue
+        notify(init.name, hookCall, newValue)
+        // Finally update state
+        return newValue
+      })
+    },
+    [hookCall, notify, init.name]
+  )
   useEffect(() => {
     async function getPromiseInitialValue() {
       // Only resolve promise if default or resolved value are not present
-      if (!defaultAtomsValues[init.name]) {
+      if (typeof defaultAtomsValues[init.name] === "undefined") {
         if (typeof init.default === "function") {
           if (pendingAtoms[init.name] === 0) {
             pendingAtoms[init.name] += 1
-            let v = init.default
-              ? (async () =>
-                  typeof init.default === "function"
-                    ? (init.default as () => Promise<R>)()
-                    : init.default)()
-              : undefined
-            if (v) {
+            let v =
+              typeof init.default !== "undefined"
+                ? (async () =>
+                    typeof init.default === "function"
+                      ? (init.default as () => Promise<R>)()
+                      : init.default)()
+                : undefined
+            if (typeof v !== "undefined") {
               v.then((val) => {
                 defaultAtomsValues[init.name] = val
-                setState(val as R)
+                updateState(val as R)
               })
             }
           } else {
@@ -151,19 +178,13 @@ function useAtomCreate<R>(init: AtomType<R>) {
       }
     }
     getPromiseInitialValue()
-  }, [state, init.default, init.name, hookCall])
+  }, [state, init.default, updateState, init.name, hookCall])
 
   useEffect(() => {
     return () => {
       pendingAtoms[init.name] = 0
     }
-  }, [])
-
-  if (!atomEmitters[init.name]) {
-    atomEmitters[init.name] = createEmitter()
-  }
-
-  const { emitter, notify } = atomEmitters[init.name]
+  }, [init.name])
 
   useEffect(() => {
     const handler = async (e: any) => {
@@ -179,17 +200,6 @@ function useAtomCreate<R>(init: AtomType<R>) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const updateState: Dispatch<SetStateAction<R>> = (v) => {
-    setState((previous) => {
-      // First notify other subscribers
-      const newValue = typeof v === "function" ? (v as any)(previous) : v
-      defaultAtomsValues[init.name] = newValue
-      notify(init.name, hookCall, newValue)
-      // Finally update state
-      return newValue
-    })
-  }
 
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
@@ -249,13 +259,57 @@ type filterCreateType<T> = {
 const defaultFiltersValues: any = {}
 
 export function filter<R>({ name, get: get }: filterCreateType<R>) {
-  const useFilterGet = () => get({ get: useValue })
+  const filterDeps: any = {}
+
+  const getObject = {
+    get: (atom: any) => {
+      filterDeps[atom["atom-name"]] = true
+      return defaultAtomsValues[atom["atom-name"]]
+    },
+  }
+
+  const initialValue = defaultFiltersValues[`${name}`] || get(getObject)
+
+  const useFilterGet = () => {
+    const [filterValue, setFilterValue] = useState<R>(
+      initialValue instanceof Promise ? undefined : initialValue
+    )
+
+    useEffect(() => {
+      function renderValue(e: any) {
+        setTimeout(() => {
+          const newValue = get(getObject)
+          if (newValue instanceof Promise) {
+            newValue.then((v) => {
+              console.log({
+                v,
+              })
+              defaultFiltersValues[`${name}`] = newValue
+              setFilterValue(v)
+            })
+          } else {
+            defaultFiltersValues[`${name}`] = newValue
+            setFilterValue(newValue)
+          }
+        }, 0)
+      }
+      for (let dep in filterDeps) {
+        atomEmitters[dep]?.emitter.addListener(dep, renderValue)
+      }
+      return () => {
+        for (let dep in filterDeps) {
+          atomEmitters[dep]?.emitter.removeListener(dep, renderValue)
+        }
+      }
+    }, [])
+    return filterValue
+  }
   useFilterGet["filter-name"] = name
   return useFilterGet
 }
 
 export function useFilter<T>(f: () => T) {
-  return f() || (defaultFiltersValues[(f as any)["filter-name"]] as T)
+  return f()
 }
 
 /**
