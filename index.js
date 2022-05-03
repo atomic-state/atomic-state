@@ -80,7 +80,8 @@ function useAtomCreate(init) {
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
     var isDefined = typeof init.default !== "undefined";
     var initialValue = (function getInitialValue() {
-        var isFunction = typeof init.default === "function";
+        var isFunction = typeof defaultAtomsValues[init.name] === "undefined" &&
+            typeof init.default === "function";
         var initVal = isDefined
             ? typeof defaultAtomsValues[init.name] === "undefined"
                 ? init.default
@@ -105,10 +106,27 @@ function useAtomCreate(init) {
             return initVal;
         }
     })();
-    var _a = (0, react_1.useState)(initialValue instanceof Promise ? undefined : initialValue), state = _a[0], setState = _a[1];
+    var _a = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
+        typeof defaultAtomsValues[init.name] === "undefined"
+        ? undefined
+        : initialValue), state = _a[0], setState = _a[1];
     if (!pendingAtoms[init.name]) {
         pendingAtoms[init.name] = 0;
     }
+    if (!atomEmitters[init.name]) {
+        atomEmitters[init.name] = createEmitter();
+    }
+    var _b = atomEmitters[init.name], emitter = _b.emitter, notify = _b.notify;
+    var updateState = (0, react_1.useCallback)(function (v) {
+        setState(function (previous) {
+            // First notify other subscribers
+            var newValue = typeof v === "function" ? v(previous) : v;
+            defaultAtomsValues[init.name] = newValue;
+            notify(init.name, hookCall, newValue);
+            // Finally update state
+            return newValue;
+        });
+    }, [hookCall, notify, init.name]);
     (0, react_1.useEffect)(function () {
         function getPromiseInitialValue() {
             return __awaiter(this, void 0, void 0, function () {
@@ -116,11 +134,11 @@ function useAtomCreate(init) {
                 var _this = this;
                 return __generator(this, function (_a) {
                     // Only resolve promise if default or resolved value are not present
-                    if (!defaultAtomsValues[init.name]) {
+                    if (typeof defaultAtomsValues[init.name] === "undefined") {
                         if (typeof init.default === "function") {
                             if (pendingAtoms[init.name] === 0) {
                                 pendingAtoms[init.name] += 1;
-                                v = init.default
+                                v = typeof init.default !== "undefined"
                                     ? (function () { return __awaiter(_this, void 0, void 0, function () {
                                         return __generator(this, function (_a) {
                                             return [2 /*return*/, typeof init.default === "function"
@@ -129,10 +147,10 @@ function useAtomCreate(init) {
                                         });
                                     }); })()
                                     : undefined;
-                                if (v) {
+                                if (typeof v !== "undefined") {
                                     v.then(function (val) {
                                         defaultAtomsValues[init.name] = val;
-                                        setState(val);
+                                        updateState(val);
                                     });
                                 }
                             }
@@ -149,16 +167,12 @@ function useAtomCreate(init) {
             });
         }
         getPromiseInitialValue();
-    }, [state, init.default, init.name, hookCall]);
+    }, [state, init.default, updateState, init.name, hookCall]);
     (0, react_1.useEffect)(function () {
         return function () {
             pendingAtoms[init.name] = 0;
         };
-    }, []);
-    if (!atomEmitters[init.name]) {
-        atomEmitters[init.name] = createEmitter();
-    }
-    var _b = atomEmitters[init.name], emitter = _b.emitter, notify = _b.notify;
+    }, [init.name]);
     (0, react_1.useEffect)(function () {
         var handler = function (e) { return __awaiter(_this, void 0, void 0, function () {
             return __generator(this, function (_a) {
@@ -174,16 +188,6 @@ function useAtomCreate(init) {
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    var updateState = function (v) {
-        setState(function (previous) {
-            // First notify other subscribers
-            var newValue = typeof v === "function" ? v(previous) : v;
-            defaultAtomsValues[init.name] = newValue;
-            notify(init.name, hookCall, newValue);
-            // Finally update state
-            return newValue;
-        });
-    };
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
             if (init.localStoragePersistence) {
@@ -227,13 +231,54 @@ exports.createAtom = atom;
 var defaultFiltersValues = {};
 function filter(_a) {
     var name = _a.name, get = _a.get;
-    var useFilterGet = function () { return get({ get: useValue }); };
+    var filterDeps = {};
+    var getObject = {
+        get: function (atom) {
+            filterDeps[atom["atom-name"]] = true;
+            return defaultAtomsValues[atom["atom-name"]];
+        },
+    };
+    var initialValue = defaultFiltersValues["".concat(name)] || get(getObject);
+    var useFilterGet = function () {
+        var _a = (0, react_1.useState)(initialValue instanceof Promise ? undefined : initialValue), filterValue = _a[0], setFilterValue = _a[1];
+        (0, react_1.useEffect)(function () {
+            var _a;
+            function renderValue(e) {
+                setTimeout(function () {
+                    var newValue = get(getObject);
+                    if (newValue instanceof Promise) {
+                        newValue.then(function (v) {
+                            console.log({
+                                v: v,
+                            });
+                            defaultFiltersValues["".concat(name)] = newValue;
+                            setFilterValue(v);
+                        });
+                    }
+                    else {
+                        defaultFiltersValues["".concat(name)] = newValue;
+                        setFilterValue(newValue);
+                    }
+                }, 0);
+            }
+            for (var dep in filterDeps) {
+                (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.addListener(dep, renderValue);
+            }
+            return function () {
+                var _a;
+                for (var dep in filterDeps) {
+                    (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.removeListener(dep, renderValue);
+                }
+            };
+        }, []);
+        return filterValue;
+    };
     useFilterGet["filter-name"] = name;
     return useFilterGet;
 }
 exports.filter = filter;
 function useFilter(f) {
-    return f() || defaultFiltersValues[f["filter-name"]];
+    return f();
 }
 exports.useFilter = useFilter;
 /**
