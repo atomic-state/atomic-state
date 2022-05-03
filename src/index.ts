@@ -277,7 +277,6 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
         : initialValue
     )
 
-    console.log(defaultFiltersValues)
     useEffect(() => {
       function renderValue(e: any) {
         setTimeout(() => {

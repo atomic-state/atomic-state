@@ -243,7 +243,6 @@ function filter(_a) {
         var _a = (0, react_1.useState)(initialValue instanceof Promise && typeof initialValue === "undefined"
             ? undefined
             : initialValue), filterValue = _a[0], setFilterValue = _a[1];
-        console.log(defaultFiltersValues);
         (0, react_1.useEffect)(function () {
             var _a;
             function renderValue(e) {
