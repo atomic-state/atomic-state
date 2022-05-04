@@ -109,7 +109,10 @@ function useAtomCreate(init) {
     var _a = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
         ? undefined
-        : initialValue), state = _a[0], setState = _a[1];
+        : (function () {
+            defaultAtomsValues[init.name] = initialValue;
+            return initialValue;
+        })()), state = _a[0], setState = _a[1];
     if (!pendingAtoms[init.name]) {
         pendingAtoms[init.name] = 0;
     }
@@ -240,12 +243,17 @@ function filter(_a) {
     };
     var useFilterGet = function () {
         var initialValue = defaultFiltersValues["".concat(name)] || get(getObject);
-        (0, react_1.useEffect)(function () {
-            get(getObject);
-        }, []);
         var _a = (0, react_1.useState)(initialValue instanceof Promise || typeof initialValue === "undefined"
             ? undefined
             : initialValue), filterValue = _a[0], setFilterValue = _a[1];
+        (0, react_1.useEffect)(function () {
+            // Render the first time if initialValue is a promise
+            if (initialValue instanceof Promise) {
+                initialValue.then(function (initial) {
+                    setFilterValue(initial);
+                });
+            }
+        }, []);
         (0, react_1.useEffect)(function () {
             var _a;
             function renderValue(e) {
@@ -272,7 +280,7 @@ function filter(_a) {
                     (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.removeListener(dep, renderValue);
                 }
             };
-        }, [filterValue]);
+        }, []);
         return filterValue;
     };
     useFilterGet["filter-name"] = name;

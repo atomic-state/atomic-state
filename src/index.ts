@@ -118,7 +118,10 @@ function useAtomCreate<R>(init: AtomType<R>) {
     (initialValue instanceof Promise || typeof initialValue === "function") &&
       typeof defaultAtomsValues[init.name] === "undefined"
       ? undefined
-      : initialValue
+      : (() => {
+          defaultAtomsValues[init.name] = initialValue
+          return initialValue
+        })()
   )
 
   if (!pendingAtoms[init.name]) {
@@ -271,15 +274,19 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
   const useFilterGet = () => {
     const initialValue = defaultFiltersValues[`${name}`] || get(getObject)
 
-    useEffect(() => {
-      get(getObject)
-    }, [])
-
     const [filterValue, setFilterValue] = useState<R>(
       initialValue instanceof Promise || typeof initialValue === "undefined"
         ? undefined
         : initialValue
     )
+    useEffect(() => {
+      // Render the first time if initialValue is a promise
+      if (initialValue instanceof Promise) {
+        initialValue.then((initial) => {
+          setFilterValue(initial)
+        })
+      }
+    }, [])
 
     useEffect(() => {
       function renderValue(e: any) {
@@ -304,7 +311,7 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
           atomEmitters[dep]?.emitter.removeListener(dep, renderValue)
         }
       }
-    }, [filterValue])
+    }, [])
 
     return filterValue
   }
