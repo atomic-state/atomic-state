@@ -6,7 +6,7 @@ jobs:
   testing:
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/workflows/test.yml@master
+      - uses: atomic-state/atomic-state/.github/workflows/test.yml@master
   pulish:
     needs: test
     runs-on: ubuntu-latest
