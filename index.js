@@ -131,6 +131,32 @@ function useAtomCreate(init) {
             return initVal;
         }
     })();
+    (0, react_1.useEffect)(function () {
+        function storageListener() {
+            if (typeof localStorage !== "undefined") {
+                if (typeof localStorage["store-".concat(init.name)] !== "undefined") {
+                    try {
+                        var newState = JSON.parse(localStorage["store-".concat(init.name)]);
+                        updateState(newState);
+                        // notify(init.name, hookCall, newState)
+                    }
+                    catch (err) { }
+                }
+            }
+        }
+        if (init.localStoragePersistence) {
+            if (typeof window !== "undefined") {
+                window.addEventListener("storage", storageListener);
+            }
+            return function () {
+                if (typeof window !== "undefined") {
+                    window.removeEventListener("storage", storageListener);
+                }
+            };
+        }
+        else
+            return function () { };
+    }, [init.name]);
     var _a = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
         ? undefined
