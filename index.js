@@ -272,6 +272,9 @@ function filter(_a) {
                 return get(getObject);
             })()
             : defaultFiltersValues["".concat(name)];
+        (0, react_1.useEffect)(function () {
+            get(getObject);
+        }, []);
         var _a = (0, react_1.useState)(initialValue instanceof Promise || typeof initialValue === "undefined"
             ? undefined
             : (function () {

@@ -308,6 +308,10 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
           })()
         : defaultFiltersValues[`${name}`]
 
+    useEffect(() => {
+      get(getObject)
+    }, [])
+
     const [filterValue, setFilterValue] = useState<R>(
       initialValue instanceof Promise || typeof initialValue === "undefined"
         ? undefined
