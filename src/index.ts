@@ -144,6 +144,28 @@ function useAtomCreate<R>(init: Atom<R>) {
     }
   })()
 
+  useEffect(() => {
+    function storageListener() {
+      if (typeof localStorage !== "undefined") {
+        if (typeof localStorage[`store-${init.name}`] !== "undefined") {
+          try {
+            const newState = JSON.parse(localStorage[`store-${init.name}`])
+            updateState(newState)
+            // notify(init.name, hookCall, newState)
+          } catch (err) {}
+        }
+      }
+    }
+    if (init.localStoragePersistence) {
+      if (typeof window !== "undefined") {
+        window.addEventListener("storage", storageListener)
+      }
+      return () => {
+        window.removeEventListener("storage", storageListener)
+      }
+    } else return () => {}
+  }, [init.name])
+
   const [state, setState] = useState<R>(
     (initialValue instanceof Promise || typeof initialValue === "function") &&
       typeof defaultAtomsValues[init.name] === "undefined"
