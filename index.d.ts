@@ -50,11 +50,11 @@ export declare type Filter<T = any> = {
         get<R>(atom: useAtomType<R> | Atom<R>): R;
     }): T;
 };
-export declare function filter<R>({ name, get: get }: Filter<R>): {
+export declare function filter<R>({ name, get: get }: Filter<R | Promise<R>>): {
     (): R;
     "filter-name": string | undefined;
 };
-export declare function useFilter<T>(f: (() => T) | Filter<T>): T;
+export declare function useFilter<T>(f: (() => T | Promise<T>) | Filter<T | Promise<T>>): T;
 /**
  * Get an atom's value and state setter
  */

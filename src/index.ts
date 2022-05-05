@@ -293,7 +293,7 @@ const defaultFiltersValues: any = {}
 
 const objectFilters: any = {}
 
-export function filter<R>({ name, get: get }: Filter<R>) {
+export function filter<R>({ name, get: get }: Filter<R | Promise<R>>) {
   const filterDeps: any = {}
 
   const getObject = {
@@ -370,7 +370,9 @@ export function filter<R>({ name, get: get }: Filter<R>) {
   return useFilterGet
 }
 
-export function useFilter<T>(f: (() => T) | Filter<T>) {
+export function useFilter<T>(
+  f: (() => T | Promise<T>) | Filter<T | Promise<T>>
+) {
   return (
     typeof f !== "function"
       ? (() => {
