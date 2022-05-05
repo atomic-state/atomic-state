@@ -90,23 +90,52 @@ function useAtomCreate<R>(init: AtomType<R>) {
       typeof defaultAtomsValues[init.name] === "undefined" &&
       typeof init.default === "function"
 
+    const initialIfFnOrPromise = isFunction
+      ? (init.default as any)()
+      : init.default instanceof Promise
+      ? init.default
+      : undefined
+
+    const isPromiseValue = initialIfFnOrPromise instanceof Promise
+
     const initVal = isDefined
       ? typeof defaultAtomsValues[init.name] === "undefined"
-        ? init.default
+        ? !isPromiseValue
+          ? typeof initialIfFnOrPromise !== "undefined"
+            ? initialIfFnOrPromise
+            : init.default
+          : init.default
         : defaultAtomsValues[init.name]
       : defaultAtomsValues[init.name]
+
     try {
+      if (init.localStoragePersistence) {
+        if (typeof localStorage !== "undefined") {
+          if (typeof defaultAtomsValues[init.name] === "undefined") {
+            defaultAtomsValues[init.name] = JSON.parse(
+              localStorage[`store-${init.name}`] as string
+            )
+          }
+        }
+      } else {
+        if (typeof defaultAtomsValues[init.name] === "undefined") {
+          defaultAtomsValues[init.name] = init.default
+        }
+      }
       return init.localStoragePersistence
         ? typeof localStorage !== "undefined"
           ? typeof localStorage[`store-${init.name}`] !== "undefined"
-            ? JSON.parse(localStorage[`store-${init.name}`] as string)
-            : isFunction
+            ? // Only return value from localStorage if not loaded to memory
+              typeof defaultAtomsValues[init.name] === "undefined"
+              ? JSON.parse(localStorage[`store-${init.name}`] as string)
+              : defaultAtomsValues[init.name]
+            : isPromiseValue
             ? undefined
             : initVal
-          : isFunction
+          : isPromiseValue
           ? undefined
           : initVal
-        : isFunction
+        : isPromiseValue
         ? undefined
         : initVal
     } catch (err) {
@@ -272,21 +301,30 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
   }
 
   const useFilterGet = () => {
-    const initialValue = defaultFiltersValues[`${name}`] || get(getObject)
+    const initialValue =
+      typeof defaultFiltersValues[`${name}`] === "undefined"
+        ? (() => {
+            return get(getObject)
+          })()
+        : defaultFiltersValues[`${name}`]
 
     const [filterValue, setFilterValue] = useState<R>(
       initialValue instanceof Promise || typeof initialValue === "undefined"
         ? undefined
-        : initialValue
+        : (() => {
+            defaultFiltersValues[`${name}`] = initialValue
+            return initialValue
+          })()
     )
     useEffect(() => {
       // Render the first time if initialValue is a promise
       if (initialValue instanceof Promise) {
         initialValue.then((initial) => {
+          defaultFiltersValues[`${name}`] = initial
           setFilterValue(initial)
         })
       }
-    }, [])
+    }, [initialValue])
 
     useEffect(() => {
       function renderValue(e: any) {

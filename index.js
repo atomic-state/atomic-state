@@ -82,23 +82,48 @@ function useAtomCreate(init) {
     var initialValue = (function getInitialValue() {
         var isFunction = typeof defaultAtomsValues[init.name] === "undefined" &&
             typeof init.default === "function";
+        var initialIfFnOrPromise = isFunction
+            ? init.default()
+            : init.default instanceof Promise
+                ? init.default
+                : undefined;
+        var isPromiseValue = initialIfFnOrPromise instanceof Promise;
         var initVal = isDefined
             ? typeof defaultAtomsValues[init.name] === "undefined"
-                ? init.default
+                ? !isPromiseValue
+                    ? typeof initialIfFnOrPromise !== "undefined"
+                        ? initialIfFnOrPromise
+                        : init.default
+                    : init.default
                 : defaultAtomsValues[init.name]
             : defaultAtomsValues[init.name];
         try {
+            if (init.localStoragePersistence) {
+                if (typeof localStorage !== "undefined") {
+                    if (typeof defaultAtomsValues[init.name] === "undefined") {
+                        defaultAtomsValues[init.name] = JSON.parse(localStorage["store-".concat(init.name)]);
+                    }
+                }
+            }
+            else {
+                if (typeof defaultAtomsValues[init.name] === "undefined") {
+                    defaultAtomsValues[init.name] = init.default;
+                }
+            }
             return init.localStoragePersistence
                 ? typeof localStorage !== "undefined"
                     ? typeof localStorage["store-".concat(init.name)] !== "undefined"
-                        ? JSON.parse(localStorage["store-".concat(init.name)])
-                        : isFunction
+                        ? // Only return value from localStorage if not loaded to memory
+                            typeof defaultAtomsValues[init.name] === "undefined"
+                                ? JSON.parse(localStorage["store-".concat(init.name)])
+                                : defaultAtomsValues[init.name]
+                        : isPromiseValue
                             ? undefined
                             : initVal
-                    : isFunction
+                    : isPromiseValue
                         ? undefined
                         : initVal
-                : isFunction
+                : isPromiseValue
                     ? undefined
                     : initVal;
         }
@@ -242,18 +267,26 @@ function filter(_a) {
         },
     };
     var useFilterGet = function () {
-        var initialValue = defaultFiltersValues["".concat(name)] || get(getObject);
+        var initialValue = typeof defaultFiltersValues["".concat(name)] === "undefined"
+            ? (function () {
+                return get(getObject);
+            })()
+            : defaultFiltersValues["".concat(name)];
         var _a = (0, react_1.useState)(initialValue instanceof Promise || typeof initialValue === "undefined"
             ? undefined
-            : initialValue), filterValue = _a[0], setFilterValue = _a[1];
+            : (function () {
+                defaultFiltersValues["".concat(name)] = initialValue;
+                return initialValue;
+            })()), filterValue = _a[0], setFilterValue = _a[1];
         (0, react_1.useEffect)(function () {
             // Render the first time if initialValue is a promise
             if (initialValue instanceof Promise) {
                 initialValue.then(function (initial) {
+                    defaultFiltersValues["".concat(name)] = initial;
                     setFilterValue(initial);
                 });
             }
-        }, []);
+        }, [initialValue]);
         (0, react_1.useEffect)(function () {
             var _a;
             function renderValue(e) {
