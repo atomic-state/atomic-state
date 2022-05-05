@@ -161,7 +161,9 @@ function useAtomCreate<R>(init: Atom<R>) {
         window.addEventListener("storage", storageListener)
       }
       return () => {
-        window.removeEventListener("storage", storageListener)
+        if (typeof window !== "undefined") {
+          window.removeEventListener("storage", storageListener)
+        }
       }
     } else return () => {}
   }, [init.name])

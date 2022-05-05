@@ -149,7 +149,9 @@ function useAtomCreate(init) {
                 window.addEventListener("storage", storageListener);
             }
             return function () {
-                window.removeEventListener("storage", storageListener);
+                if (typeof window !== "undefined") {
+                    window.removeEventListener("storage", storageListener);
+                }
             };
         }
         else
