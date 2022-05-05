@@ -1,11 +1,11 @@
-import { atom } from "../"
+import { Atom, atom } from "../"
 
-export const clicks = atom({
+export const clicks: Atom<number> = {
   name: "clicks-count",
   default: 0,
-})
+}
 
-export const nameAtom = atom({
+export const nameAtom: Atom<string> = {
   name: "user-name",
   default: "",
-})
+}

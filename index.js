@@ -257,13 +257,21 @@ function atom(init) {
 exports.atom = atom;
 exports.createAtom = atom;
 var defaultFiltersValues = {};
+var objectFilters = {};
 function filter(_a) {
     var name = _a.name, get = _a.get;
     var filterDeps = {};
     var getObject = {
         get: function (atom) {
-            filterDeps[atom["atom-name"]] = true;
-            return defaultAtomsValues[atom["atom-name"]];
+            if (typeof atom === "object") {
+                filterDeps[atom.name] = true;
+            }
+            else {
+                filterDeps[atom["atom-name"]] = true;
+            }
+            return typeof atom === "object"
+                ? defaultAtomsValues[atom.name]
+                : defaultAtomsValues[atom["atom-name"]];
         },
     };
     var useFilterGet = function () {
@@ -324,21 +332,33 @@ function filter(_a) {
 }
 exports.filter = filter;
 function useFilter(f) {
-    return f();
+    return (typeof f !== "function"
+        ? (function () {
+            if (typeof objectFilters["".concat(f.name)] === "undefined") {
+                objectFilters["".concat(f.name)] = filter(f);
+            }
+            return objectFilters["".concat(f.name)]();
+        })()
+        : f());
 }
 exports.useFilter = useFilter;
+var objectAtoms = {};
 /**
  * Get an atom's value and state setter
  */
 function useAtom(atom) {
-    return atom();
+    if (typeof atom !== "function" &&
+        typeof objectAtoms[atom.name] === "undefined") {
+        objectAtoms[atom.name] = (0, exports.createAtom)(atom);
+    }
+    return (typeof atom !== "function" ? objectAtoms[atom.name]() : atom());
 }
 exports.useAtom = useAtom;
 /**
  * Get an atom's value
  */
 function useValue(atom) {
-    return atom()[0];
+    return useAtom(atom)[0];
 }
 exports.useValue = useValue;
 exports.useAtomValue = useValue;
@@ -346,7 +366,7 @@ exports.useAtomValue = useValue;
  * Get the function that updates the atom's value
  */
 function useDispatch(atom) {
-    return atom()[1];
+    return useAtom(atom)[1];
 }
 exports.useDispatch = useDispatch;
 exports.useAtomDispatch = useDispatch;
@@ -354,7 +374,7 @@ exports.useAtomDispatch = useDispatch;
  * Get the actions of the atom as reducers
  */
 function useActions(atom) {
-    return atom()[2];
+    return useAtom(atom)[2];
 }
 exports.useActions = useActions;
 exports.useAtomActions = useActions;

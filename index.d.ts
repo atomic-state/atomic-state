@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 import React, { Dispatch, SetStateAction } from "react";
-declare type AtomType<T> = {
+export declare type Atom<T = any> = {
     name: string;
     default?: T | Promise<T> | (() => Promise<T>) | (() => T);
     localStoragePersistence?: boolean;
@@ -38,41 +38,41 @@ export declare const AtomicState: React.FC<{
 /**
  * Creates an atom containing state
  */
-export declare function atom<R>(init: AtomType<R>): {
+export declare function atom<R>(init: Atom<R>): {
     (): (ActionsObjectType | R | React.Dispatch<React.SetStateAction<R>>)[];
     "atom-name": string;
 };
 export declare const createAtom: typeof atom;
 declare type useAtomType<R> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType)[];
-declare type filterCreateType<T> = {
+export declare type Filter<T = any> = {
     name?: string;
     get(c: {
-        get<R>(atom: useAtomType<R>): R;
+        get<R>(atom: useAtomType<R> | Atom<R>): R;
     }): T;
 };
-export declare function filter<R>({ name, get: get }: filterCreateType<R>): {
+export declare function filter<R>({ name, get: get }: Filter<R>): {
     (): R;
     "filter-name": string | undefined;
 };
-export declare function useFilter<T>(f: () => T): T;
+export declare function useFilter<T>(f: (() => T) | Filter<T>): T;
 /**
  * Get an atom's value and state setter
  */
-export declare function useAtom<R>(atom: useAtomType<R>): [R, (cb: R | ((c: R) => R)) => void, ActionsObjectType];
+export declare function useAtom<R>(atom: useAtomType<R> | Atom<R>): [R, (cb: R | ((c: R) => R)) => void, ActionsObjectType];
 /**
  * Get an atom's value
  */
-export declare function useValue<R>(atom: useAtomType<R>): R;
+export declare function useValue<R>(atom: useAtomType<R> | Atom<R>): R;
 export declare const useAtomValue: typeof useValue;
 /**
  * Get the function that updates the atom's value
  */
-export declare function useDispatch<R>(atom: useAtomType<R>): (cb: R | ((c: R) => R)) => void;
+export declare function useDispatch<R>(atom: useAtomType<R> | Atom<R>): (cb: R | ((c: R) => R)) => void;
 export declare const useAtomDispatch: typeof useDispatch;
 /**
  * Get the actions of the atom as reducers
  */
-export declare function useActions<R>(atom: useAtomType<R>): ActionsObjectType;
+export declare function useActions<R>(atom: useAtomType<R> | Atom<R>): ActionsObjectType;
 export declare const useAtomActions: typeof useActions;
 export declare function useStorage(): {
     [key: string]: any;

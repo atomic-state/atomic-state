@@ -6,6 +6,7 @@
  */
 
 import { EventEmitter } from "events"
+
 import React, {
   Dispatch,
   SetStateAction,
@@ -15,7 +16,7 @@ import React, {
   useState,
 } from "react"
 
-type AtomType<T> = {
+export type Atom<T = any> = {
   name: string
   default?: T | Promise<T> | (() => Promise<T>) | (() => T)
   localStoragePersistence?: boolean
@@ -80,7 +81,7 @@ export const AtomicState: React.FC<{
   return children
 }
 
-function useAtomCreate<R>(init: AtomType<R>) {
+function useAtomCreate<R>(init: Atom<R>) {
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
   const isDefined = typeof init.default !== "undefined"
@@ -270,7 +271,7 @@ function useAtomCreate<R>(init: AtomType<R>) {
 /**
  * Creates an atom containing state
  */
-export function atom<R>(init: AtomType<R>) {
+export function atom<R>(init: Atom<R>) {
   const useCreate = () => useAtomCreate<R>(init)
   useCreate["atom-name"] = init.name
   return useCreate
@@ -283,20 +284,28 @@ type useAtomType<R> = () => (
   | ActionsObjectType
 )[]
 
-type filterCreateType<T> = {
+export type Filter<T = any> = {
   name?: string
-  get(c: { get<R>(atom: useAtomType<R>): R }): T
+  get(c: { get<R>(atom: useAtomType<R> | Atom<R>): R }): T
 }
 
 const defaultFiltersValues: any = {}
 
-export function filter<R>({ name, get: get }: filterCreateType<R>) {
+const objectFilters: any = {}
+
+export function filter<R>({ name, get: get }: Filter<R>) {
   const filterDeps: any = {}
 
   const getObject = {
     get: (atom: any) => {
-      filterDeps[atom["atom-name"]] = true
-      return defaultAtomsValues[atom["atom-name"]]
+      if (typeof atom === "object") {
+        filterDeps[atom.name] = true
+      } else {
+        filterDeps[atom["atom-name"]] = true
+      }
+      return typeof atom === "object"
+        ? defaultAtomsValues[atom.name]
+        : defaultAtomsValues[atom["atom-name"]]
     },
   }
 
@@ -361,38 +370,60 @@ export function filter<R>({ name, get: get }: filterCreateType<R>) {
   return useFilterGet
 }
 
-export function useFilter<T>(f: () => T) {
-  return f()
+export function useFilter<T>(f: (() => T) | Filter<T>) {
+  return (
+    typeof f !== "function"
+      ? (() => {
+          if (typeof objectFilters[`${f.name}`] === "undefined") {
+            objectFilters[`${f.name}`] = filter(f)
+          }
+          return objectFilters[`${f.name}`]()
+        })()
+      : f()
+  ) as T
 }
+
+const objectAtoms: any = {}
 
 /**
  * Get an atom's value and state setter
  */
-export function useAtom<R>(atom: useAtomType<R>) {
-  return atom() as [R, (cb: ((c: R) => R) | R) => void, ActionsObjectType]
+export function useAtom<R>(atom: useAtomType<R> | Atom<R>) {
+  if (
+    typeof atom !== "function" &&
+    typeof objectAtoms[atom.name] === "undefined"
+  ) {
+    objectAtoms[atom.name] = createAtom(atom)
+  }
+
+  return (typeof atom !== "function" ? objectAtoms[atom.name]() : atom()) as [
+    R,
+    (cb: ((c: R) => R) | R) => void,
+    ActionsObjectType
+  ]
 }
 
 /**
  * Get an atom's value
  */
-export function useValue<R>(atom: useAtomType<R>) {
-  return atom()[0] as R
+export function useValue<R>(atom: useAtomType<R> | Atom<R>) {
+  return useAtom(atom)[0] as R
 }
 export const useAtomValue = useValue
 
 /**
  * Get the function that updates the atom's value
  */
-export function useDispatch<R>(atom: useAtomType<R>) {
-  return atom()[1] as (cb: ((c: R) => R) | R) => void
+export function useDispatch<R>(atom: useAtomType<R> | Atom<R>) {
+  return useAtom(atom)[1] as (cb: ((c: R) => R) | R) => void
 }
 export const useAtomDispatch = useDispatch
 
 /**
  * Get the actions of the atom as reducers
  */
-export function useActions<R>(atom: useAtomType<R>) {
-  return atom()[2] as ActionsObjectType
+export function useActions<R>(atom: useAtomType<R> | Atom<R>) {
+  return useAtom(atom)[2] as ActionsObjectType
 }
 export const useAtomActions = useActions
 
