@@ -280,14 +280,15 @@ function useAtomCreate(init) {
 function atom(init) {
     var useCreate = function () { return useAtomCreate(init); };
     useCreate["atom-name"] = init.name;
+    useCreate["init-object"] = init;
     return useCreate;
 }
 exports.atom = atom;
 exports.createAtom = atom;
 var defaultFiltersValues = {};
 var objectFilters = {};
-function filter(_a) {
-    var name = _a.name, get = _a.get;
+function filter(init) {
+    var name = init.name, get = init.get;
     var filterDeps = {};
     var getObject = {
         get: function (atom) {
@@ -356,6 +357,7 @@ function filter(_a) {
         return filterValue;
     };
     useFilterGet["filter-name"] = name;
+    useFilterGet["init-object"] = init;
     return useFilterGet;
 }
 exports.filter = filter;
@@ -364,6 +366,11 @@ function useFilter(f) {
         ? (function () {
             if (typeof objectFilters["".concat(f.name)] === "undefined") {
                 objectFilters["".concat(f.name)] = filter(f);
+            }
+            else {
+                if (objectFilters["".concat(f.name)]["init-object"] !== f) {
+                    objectFilters["".concat(f.name)] = filter(f);
+                }
             }
             return objectFilters["".concat(f.name)]();
         })()
@@ -375,9 +382,15 @@ var objectAtoms = {};
  * Get an atom's value and state setter
  */
 function useAtom(atom) {
-    if (typeof atom !== "function" &&
-        typeof objectAtoms[atom.name] === "undefined") {
-        objectAtoms[atom.name] = (0, exports.createAtom)(atom);
+    if (typeof atom !== "function") {
+        if (typeof objectAtoms[atom.name] === "undefined") {
+            objectAtoms[atom.name] = (0, exports.createAtom)(atom);
+        }
+        else {
+            if (objectAtoms[atom.name]["init-object"] !== atom) {
+                objectAtoms[atom.name] = (0, exports.createAtom)(atom);
+            }
+        }
     }
     return (typeof atom !== "function" ? objectAtoms[atom.name]() : atom());
 }

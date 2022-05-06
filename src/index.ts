@@ -305,6 +305,7 @@ function useAtomCreate<R>(init: Atom<R>) {
 export function atom<R>(init: Atom<R>) {
   const useCreate = () => useAtomCreate<R>(init)
   useCreate["atom-name"] = init.name
+  useCreate["init-object"] = init
   return useCreate
 }
 export const createAtom = atom
@@ -334,7 +335,8 @@ const defaultFiltersValues: any = {}
 
 const objectFilters: any = {}
 
-export function filter<R>({ name, get: get }: Filter<R | Promise<R>>) {
+export function filter<R>(init: Filter<R | Promise<R>>) {
+  const { name, get: get } = init
   const filterDeps: any = {}
 
   const getObject = {
@@ -408,6 +410,7 @@ export function filter<R>({ name, get: get }: Filter<R | Promise<R>>) {
     return filterValue
   }
   useFilterGet["filter-name"] = name
+  useFilterGet["init-object"] = init
   return useFilterGet
 }
 
@@ -419,6 +422,10 @@ export function useFilter<T>(
       ? (() => {
           if (typeof objectFilters[`${f.name}`] === "undefined") {
             objectFilters[`${f.name}`] = filter(f)
+          } else {
+            if (objectFilters[`${f.name}`]["init-object"] !== f) {
+              objectFilters[`${f.name}`] = filter(f)
+            }
           }
           return objectFilters[`${f.name}`]()
         })()
@@ -432,11 +439,14 @@ const objectAtoms: any = {}
  * Get an atom's value and state setter
  */
 export function useAtom<R>(atom: useAtomType<R> | Atom<R>) {
-  if (
-    typeof atom !== "function" &&
-    typeof objectAtoms[atom.name] === "undefined"
-  ) {
-    objectAtoms[atom.name] = createAtom(atom)
+  if (typeof atom !== "function") {
+    if (typeof objectAtoms[atom.name] === "undefined") {
+      objectAtoms[atom.name] = createAtom(atom)
+    } else {
+      if (objectAtoms[atom.name]["init-object"] !== atom) {
+        objectAtoms[atom.name] = createAtom(atom)
+      }
+    }
   }
 
   return (typeof atom !== "function" ? objectAtoms[atom.name]() : atom()) as [
