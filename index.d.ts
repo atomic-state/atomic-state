@@ -5,6 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 import React, { Dispatch, SetStateAction } from "react";
+/**
+ * Atom type
+ */
 export declare type Atom<T = any> = {
     name: string;
     default?: T | Promise<T> | (() => Promise<T>) | (() => T);
@@ -44,11 +47,18 @@ export declare function atom<R>(init: Atom<R>): {
 };
 export declare const createAtom: typeof atom;
 declare type useAtomType<R> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType)[];
+/**
+ * Type for the `get` function of filters
+ */
+export declare type FilterGet = {
+    get<R>(atom: useAtomType<R> | Atom<R>): R;
+};
+/**
+ * Filter type
+ */
 export declare type Filter<T = any> = {
     name?: string;
-    get(c: {
-        get<R>(atom: useAtomType<R> | Atom<R>): R;
-    }): T;
+    get(c: FilterGet): T;
 };
 export declare function filter<R>({ name, get: get }: Filter<R | Promise<R>>): {
     (): R;

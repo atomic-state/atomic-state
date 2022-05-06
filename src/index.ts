@@ -16,6 +16,9 @@ import React, {
   useState,
 } from "react"
 
+/**
+ * Atom type
+ */
 export type Atom<T = any> = {
   name: string
   default?: T | Promise<T> | (() => Promise<T>) | (() => T)
@@ -158,14 +161,18 @@ function useAtomCreate<R>(init: Atom<R>) {
     }
     if (init.localStoragePersistence) {
       if (typeof window !== "undefined") {
-        window.addEventListener("storage", storageListener)
-      }
-      return () => {
-        if (typeof window !== "undefined") {
-          window.removeEventListener("storage", storageListener)
+        const canListen = typeof window.addEventListener !== "undefined"
+        if (canListen) {
+          window.addEventListener("storage", storageListener)
+          return () => {
+            if (typeof window !== "undefined") {
+              window.removeEventListener("storage", storageListener)
+            }
+          }
         }
       }
-    } else return () => {}
+    }
+    return () => {}
   }, [init.name])
 
   const [state, setState] = useState<R>(
@@ -308,9 +315,19 @@ type useAtomType<R> = () => (
   | ActionsObjectType
 )[]
 
+/**
+ * Type for the `get` function of filters
+ */
+export type FilterGet = {
+  get<R>(atom: useAtomType<R> | Atom<R>): R
+}
+
+/**
+ * Filter type
+ */
 export type Filter<T = any> = {
   name?: string
-  get(c: { get<R>(atom: useAtomType<R> | Atom<R>): R }): T
+  get(c: FilterGet): T
 }
 
 const defaultFiltersValues: any = {}
