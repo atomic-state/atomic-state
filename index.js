@@ -146,16 +146,18 @@ function useAtomCreate(init) {
         }
         if (init.localStoragePersistence) {
             if (typeof window !== "undefined") {
-                window.addEventListener("storage", storageListener);
-            }
-            return function () {
-                if (typeof window !== "undefined") {
-                    window.removeEventListener("storage", storageListener);
+                var canListen = typeof window.addEventListener !== "undefined";
+                if (canListen) {
+                    window.addEventListener("storage", storageListener);
+                    return function () {
+                        if (typeof window !== "undefined") {
+                            window.removeEventListener("storage", storageListener);
+                        }
+                    };
                 }
-            };
+            }
         }
-        else
-            return function () { };
+        return function () { };
     }, [init.name]);
     var _a = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
