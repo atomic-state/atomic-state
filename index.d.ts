@@ -44,6 +44,7 @@ export declare const AtomicState: React.FC<{
 export declare function atom<R>(init: Atom<R>): {
     (): (ActionsObjectType | R | React.Dispatch<React.SetStateAction<R>>)[];
     "atom-name": string;
+    "init-object": Atom<R>;
 };
 export declare const createAtom: typeof atom;
 declare type useAtomType<R> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType)[];
@@ -60,9 +61,10 @@ export declare type Filter<T = any> = {
     name?: string;
     get(c: FilterGet): T;
 };
-export declare function filter<R>({ name, get: get }: Filter<R | Promise<R>>): {
+export declare function filter<R>(init: Filter<R | Promise<R>>): {
     (): R;
     "filter-name": string | undefined;
+    "init-object": Filter<R | Promise<R>>;
 };
 export declare function useFilter<T>(f: (() => T | Promise<T>) | Filter<T | Promise<T>>): T;
 /**
