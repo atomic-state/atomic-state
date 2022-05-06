@@ -444,8 +444,6 @@ export function useAtom<R>(atom: useAtomType<R> | Atom<R>) {
       objectAtoms[atom.name] = createAtom(atom)
     } else {
       if (objectAtoms[atom.name]["init-object"] !== atom) {
-        console.log("need to re-render object")
-        console.log(objectAtoms[atom.name]["init-object"])
         objectAtoms[atom.name] = createAtom(atom)
       }
     }

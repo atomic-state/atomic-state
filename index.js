@@ -388,8 +388,6 @@ function useAtom(atom) {
         }
         else {
             if (objectAtoms[atom.name]["init-object"] !== atom) {
-                console.log("need to re-render object");
-                console.log(objectAtoms[atom.name]["init-object"]);
                 objectAtoms[atom.name] = (0, exports.createAtom)(atom);
             }
         }
