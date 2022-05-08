@@ -260,7 +260,9 @@ function useAtomCreate<R>(init: Atom<R>) {
   useEffect(() => {
     const handler = async (e: any) => {
       if (e.hookCall !== hookCall) {
-        setState(e.payload)
+        setTimeout(() => {
+          setState(e.payload)
+        }, 0)
       }
     }
 

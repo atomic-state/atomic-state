@@ -237,7 +237,9 @@ function useAtomCreate(init) {
         var handler = function (e) { return __awaiter(_this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 if (e.hookCall !== hookCall) {
-                    setState(e.payload);
+                    setTimeout(function () {
+                        setState(e.payload);
+                    }, 0);
                 }
                 return [2 /*return*/];
             });
