@@ -54,6 +54,9 @@ function createEmitter() {
 }
 
 const defaultAtomsValues: any = {}
+const defaultAtomsInAtomic: any = {}
+const defaultFiltersInAtomic: any = {}
+
 const pendingAtoms: any = {}
 
 export const AtomicState: React.FC<{
@@ -74,11 +77,13 @@ export const AtomicState: React.FC<{
   if (atoms) {
     for (let atomKey in atoms) {
       defaultAtomsValues[atomKey] = atoms[atomKey]
+      defaultAtomsInAtomic[atomKey] = true
     }
   }
   if (filters) {
     for (let filterKey in filters) {
       defaultFiltersValues[filterKey] = filters[filterKey]
+      defaultFiltersInAtomic[filterKey] = true
     }
   }
   return children
@@ -115,7 +120,11 @@ function useAtomCreate<R>(init: Atom<R>) {
     try {
       if (init.localStoragePersistence) {
         if (typeof localStorage !== "undefined") {
-          if (typeof defaultAtomsValues[init.name] === "undefined") {
+          if (
+            typeof defaultAtomsValues[init.name] === "undefined" ||
+            defaultAtomsInAtomic[init.name]
+          ) {
+            defaultAtomsInAtomic[init.name] = false
             defaultAtomsValues[init.name] = JSON.parse(
               localStorage[`store-${init.name}`] as string
             )
@@ -123,16 +132,14 @@ function useAtomCreate<R>(init: Atom<R>) {
         }
       } else {
         if (typeof defaultAtomsValues[init.name] === "undefined") {
-          defaultAtomsValues[init.name] = init.default
+          defaultAtomsValues[init.name] = initVal
         }
       }
       return init.localStoragePersistence
         ? typeof localStorage !== "undefined"
           ? typeof localStorage[`store-${init.name}`] !== "undefined"
             ? // Only return value from localStorage if not loaded to memory
-              typeof defaultAtomsValues[init.name] === "undefined"
-              ? JSON.parse(localStorage[`store-${init.name}`] as string)
-              : defaultAtomsValues[init.name]
+              defaultAtomsValues[init.name]
             : isPromiseValue
             ? undefined
             : initVal
@@ -341,27 +348,35 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
   const getObject = {
     get: (atom: any) => {
-      if (typeof atom === "object") {
+      if (typeof atom !== "function") {
         filterDeps[atom.name] = true
       } else {
         filterDeps[atom["atom-name"]] = true
       }
-      return typeof atom === "object"
+      return typeof atom !== "function"
         ? defaultAtomsValues[atom.name]
         : defaultAtomsValues[atom["atom-name"]]
     },
   }
 
   const useFilterGet = () => {
-    const initialValue =
-      typeof defaultFiltersValues[`${name}`] === "undefined"
+    function getInitialValue() {
+      return typeof defaultFiltersValues[`${name}`] === "undefined"
         ? (() => {
             return get(getObject)
           })()
-        : defaultFiltersValues[`${name}`]
+        : (() => {
+            return defaultFiltersValues[`${name}`]
+          })()
+    }
+    const initialValue = getInitialValue()
 
     useEffect(() => {
-      get(getObject)
+      // Only render when using top `AtomicState` to set default filter value
+      // This prevents rendering the filter twice in the first render
+      if (defaultFiltersInAtomic[`${name}`]) {
+        get(getObject)
+      }
     }, [])
 
     const [filterValue, setFilterValue] = useState<R>(
@@ -382,21 +397,31 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       }
     }, [initialValue])
 
-    useEffect(() => {
-      function renderValue(e: any) {
-        setTimeout(() => {
-          const newValue = get(getObject)
-          if (newValue instanceof Promise) {
-            newValue.then((v) => {
-              defaultFiltersValues[`${name}`] = newValue
-              setFilterValue(v)
-            })
-          } else {
+    function renderValue(e: any) {
+      setTimeout(() => {
+        const newValue = get(getObject)
+        if (newValue instanceof Promise) {
+          newValue.then((v) => {
             defaultFiltersValues[`${name}`] = newValue
-            setFilterValue(newValue)
-          }
-        }, 0)
+            setFilterValue(v)
+          })
+        } else {
+          defaultFiltersValues[`${name}`] = newValue
+          setFilterValue(newValue)
+        }
+      }, 0)
+    }
+
+    useEffect(() => {
+      // This renders the initial value of the filter if it was set
+      // using the `AtomicState` component
+      if (defaultFiltersInAtomic[`${name}`]) {
+        defaultFiltersInAtomic[`${name}`] = false
+        renderValue({})
       }
+    }, [])
+
+    useEffect(() => {
       for (let dep in filterDeps) {
         atomEmitters[dep]?.emitter.addListener(dep, renderValue)
       }

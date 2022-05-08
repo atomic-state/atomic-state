@@ -59,17 +59,21 @@ function createEmitter() {
     };
 }
 var defaultAtomsValues = {};
+var defaultAtomsInAtomic = {};
+var defaultFiltersInAtomic = {};
 var pendingAtoms = {};
 var AtomicState = function (_a) {
     var children = _a.children, atoms = _a.atoms, filters = _a.filters;
     if (atoms) {
         for (var atomKey in atoms) {
             defaultAtomsValues[atomKey] = atoms[atomKey];
+            defaultAtomsInAtomic[atomKey] = true;
         }
     }
     if (filters) {
         for (var filterKey in filters) {
             defaultFiltersValues[filterKey] = filters[filterKey];
+            defaultFiltersInAtomic[filterKey] = true;
         }
     }
     return children;
@@ -100,23 +104,23 @@ function useAtomCreate(init) {
         try {
             if (init.localStoragePersistence) {
                 if (typeof localStorage !== "undefined") {
-                    if (typeof defaultAtomsValues[init.name] === "undefined") {
+                    if (typeof defaultAtomsValues[init.name] === "undefined" ||
+                        defaultAtomsInAtomic[init.name]) {
+                        defaultAtomsInAtomic[init.name] = false;
                         defaultAtomsValues[init.name] = JSON.parse(localStorage["store-".concat(init.name)]);
                     }
                 }
             }
             else {
                 if (typeof defaultAtomsValues[init.name] === "undefined") {
-                    defaultAtomsValues[init.name] = init.default;
+                    defaultAtomsValues[init.name] = initVal;
                 }
             }
             return init.localStoragePersistence
                 ? typeof localStorage !== "undefined"
                     ? typeof localStorage["store-".concat(init.name)] !== "undefined"
                         ? // Only return value from localStorage if not loaded to memory
-                            typeof defaultAtomsValues[init.name] === "undefined"
-                                ? JSON.parse(localStorage["store-".concat(init.name)])
-                                : defaultAtomsValues[init.name]
+                            defaultAtomsValues[init.name]
                         : isPromiseValue
                             ? undefined
                             : initVal
@@ -292,25 +296,34 @@ function filter(init) {
     var filterDeps = {};
     var getObject = {
         get: function (atom) {
-            if (typeof atom === "object") {
+            if (typeof atom !== "function") {
                 filterDeps[atom.name] = true;
             }
             else {
                 filterDeps[atom["atom-name"]] = true;
             }
-            return typeof atom === "object"
+            return typeof atom !== "function"
                 ? defaultAtomsValues[atom.name]
                 : defaultAtomsValues[atom["atom-name"]];
         },
     };
     var useFilterGet = function () {
-        var initialValue = typeof defaultFiltersValues["".concat(name)] === "undefined"
-            ? (function () {
-                return get(getObject);
-            })()
-            : defaultFiltersValues["".concat(name)];
+        function getInitialValue() {
+            return typeof defaultFiltersValues["".concat(name)] === "undefined"
+                ? (function () {
+                    return get(getObject);
+                })()
+                : (function () {
+                    return defaultFiltersValues["".concat(name)];
+                })();
+        }
+        var initialValue = getInitialValue();
         (0, react_1.useEffect)(function () {
-            get(getObject);
+            // Only render when using top `AtomicState` to set default filter value
+            // This prevents rendering the filter twice in the first render
+            if (defaultFiltersInAtomic["".concat(name)]) {
+                get(getObject);
+            }
         }, []);
         var _a = (0, react_1.useState)(initialValue instanceof Promise || typeof initialValue === "undefined"
             ? undefined
@@ -327,23 +340,31 @@ function filter(init) {
                 });
             }
         }, [initialValue]);
+        function renderValue(e) {
+            setTimeout(function () {
+                var newValue = get(getObject);
+                if (newValue instanceof Promise) {
+                    newValue.then(function (v) {
+                        defaultFiltersValues["".concat(name)] = newValue;
+                        setFilterValue(v);
+                    });
+                }
+                else {
+                    defaultFiltersValues["".concat(name)] = newValue;
+                    setFilterValue(newValue);
+                }
+            }, 0);
+        }
+        (0, react_1.useEffect)(function () {
+            // This renders the initial value of the filter if it was set
+            // using the `AtomicState` component
+            if (defaultFiltersInAtomic["".concat(name)]) {
+                defaultFiltersInAtomic["".concat(name)] = false;
+                renderValue({});
+            }
+        }, []);
         (0, react_1.useEffect)(function () {
             var _a;
-            function renderValue(e) {
-                setTimeout(function () {
-                    var newValue = get(getObject);
-                    if (newValue instanceof Promise) {
-                        newValue.then(function (v) {
-                            defaultFiltersValues["".concat(name)] = newValue;
-                            setFilterValue(v);
-                        });
-                    }
-                    else {
-                        defaultFiltersValues["".concat(name)] = newValue;
-                        setFilterValue(newValue);
-                    }
-                }, 0);
-            }
             for (var dep in filterDeps) {
                 (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.addListener(dep, renderValue);
             }
