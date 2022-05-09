@@ -242,10 +242,13 @@ function useAtomCreate<R>(init: Atom<R>) {
     if (typeof vIfPersistence !== "undefined") {
       if (!hydrated.current) {
         hydrated.current = true
-        setTimeout(() => {
+        const tm = setTimeout(() => {
           updateState(vIfPersistence)
           setVIfPersistence(undefined)
         }, 0)
+        return () => {
+          clearTimeout(tm)
+        }
       }
     }
   }, [vIfPersistence, updateState, hydrated])
@@ -295,8 +298,9 @@ function useAtomCreate<R>(init: Atom<R>) {
   useEffect(() => {
     const handler = async (e: any) => {
       if (e.hookCall !== hookCall) {
-        setTimeout(() => {
+        const tm = setTimeout(() => {
           setState(e.payload)
+          clearTimeout(tm)
         }, 0)
       }
     }
@@ -435,7 +439,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     }, [initialValue])
 
     function renderValue(e: any) {
-      setTimeout(() => {
+      const tm = setTimeout(() => {
         const newValue = get(getObject)
         if (newValue instanceof Promise) {
           newValue.then((v) => {
@@ -446,6 +450,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           defaultFiltersValues[`${name}`] = newValue
           setFilterValue(newValue)
         }
+        clearTimeout(tm)
       }, 0)
     }
 
