@@ -13,6 +13,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 
@@ -23,6 +24,12 @@ export type Atom<T = any> = {
   name: string
   default?: T | Promise<T> | (() => Promise<T>) | (() => T)
   localStoragePersistence?: boolean
+  /**
+   * This is for use when `localStoragePersistence` is `true`
+   * By default it's false. This is to prevent hydration errors.
+   * If set to `false`, data from localStorage will be loaded during render, not after.
+   */
+  hydration?: boolean
   actions?: {
     [name: string]: (st: {
       args: any
@@ -90,6 +97,7 @@ export const AtomicState: React.FC<{
 }
 
 function useAtomCreate<R>(init: Atom<R>) {
+  const { hydration = true } = init
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
   const isDefined = typeof init.default !== "undefined"
@@ -107,7 +115,7 @@ function useAtomCreate<R>(init: Atom<R>) {
 
     const isPromiseValue = initialIfFnOrPromise instanceof Promise
 
-    const initVal = isDefined
+    let initVal = isDefined
       ? typeof defaultAtomsValues[init.name] === "undefined"
         ? !isPromiseValue
           ? typeof initialIfFnOrPromise !== "undefined"
@@ -125,9 +133,11 @@ function useAtomCreate<R>(init: Atom<R>) {
             defaultAtomsInAtomic[init.name]
           ) {
             defaultAtomsInAtomic[init.name] = false
-            defaultAtomsValues[init.name] = JSON.parse(
-              localStorage[`store-${init.name}`] as string
-            )
+            defaultAtomsValues[init.name] = isPromiseValue
+              ? undefined
+              : hydration
+              ? initVal
+              : JSON.parse(localStorage[`store-${init.name}`] as string)
           }
         }
       } else {
@@ -153,6 +163,16 @@ function useAtomCreate<R>(init: Atom<R>) {
       return initVal
     }
   })()
+
+  const [vIfPersistence, setVIfPersistence] = useState(() => {
+    try {
+      if (hydration) {
+        return JSON.parse(localStorage[`store-${init.name}`] as string)
+      } else return undefined
+    } catch (err) {
+      return initialValue
+    }
+  })
 
   useEffect(() => {
     function storageListener() {
@@ -215,6 +235,21 @@ function useAtomCreate<R>(init: Atom<R>) {
     },
     [hookCall, notify, init.name]
   )
+
+  const hydrated = useRef(false)
+
+  useEffect(() => {
+    if (typeof vIfPersistence !== "undefined") {
+      if (!hydrated.current) {
+        hydrated.current = true
+        setTimeout(() => {
+          updateState(vIfPersistence)
+          setVIfPersistence(undefined)
+        }, 0)
+      }
+    }
+  }, [vIfPersistence, updateState, hydrated])
+
   useEffect(() => {
     async function getPromiseInitialValue() {
       // Only resolve promise if default or resolved value are not present

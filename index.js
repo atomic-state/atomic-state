@@ -81,6 +81,7 @@ var AtomicState = function (_a) {
 exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
+    var _a = init.hydration, hydration = _a === void 0 ? true : _a;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
     var isDefined = typeof init.default !== "undefined";
     var initialValue = (function getInitialValue() {
@@ -107,7 +108,11 @@ function useAtomCreate(init) {
                     if (typeof defaultAtomsValues[init.name] === "undefined" ||
                         defaultAtomsInAtomic[init.name]) {
                         defaultAtomsInAtomic[init.name] = false;
-                        defaultAtomsValues[init.name] = JSON.parse(localStorage["store-".concat(init.name)]);
+                        defaultAtomsValues[init.name] = isPromiseValue
+                            ? undefined
+                            : hydration
+                                ? initVal
+                                : JSON.parse(localStorage["store-".concat(init.name)]);
                     }
                 }
             }
@@ -135,6 +140,18 @@ function useAtomCreate(init) {
             return initVal;
         }
     })();
+    var _b = (0, react_1.useState)(function () {
+        try {
+            if (hydration) {
+                return JSON.parse(localStorage["store-".concat(init.name)]);
+            }
+            else
+                return undefined;
+        }
+        catch (err) {
+            return initialValue;
+        }
+    }), vIfPersistence = _b[0], setVIfPersistence = _b[1];
     (0, react_1.useEffect)(function () {
         function storageListener() {
             if (typeof localStorage !== "undefined") {
@@ -163,20 +180,20 @@ function useAtomCreate(init) {
         }
         return function () { };
     }, [init.name]);
-    var _a = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
+    var _c = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
         ? undefined
         : (function () {
             defaultAtomsValues[init.name] = initialValue;
             return initialValue;
-        })()), state = _a[0], setState = _a[1];
+        })()), state = _c[0], setState = _c[1];
     if (!pendingAtoms[init.name]) {
         pendingAtoms[init.name] = 0;
     }
     if (!atomEmitters[init.name]) {
         atomEmitters[init.name] = createEmitter();
     }
-    var _b = atomEmitters[init.name], emitter = _b.emitter, notify = _b.notify;
+    var _d = atomEmitters[init.name], emitter = _d.emitter, notify = _d.notify;
     var updateState = (0, react_1.useCallback)(function (v) {
         setState(function (previous) {
             // First notify other subscribers
@@ -187,6 +204,18 @@ function useAtomCreate(init) {
             return newValue;
         });
     }, [hookCall, notify, init.name]);
+    var hydrated = (0, react_1.useRef)(false);
+    (0, react_1.useEffect)(function () {
+        if (typeof vIfPersistence !== "undefined") {
+            if (!hydrated.current) {
+                hydrated.current = true;
+                setTimeout(function () {
+                    updateState(vIfPersistence);
+                    setVIfPersistence(undefined);
+                }, 0);
+            }
+        }
+    }, [vIfPersistence, updateState, hydrated]);
     (0, react_1.useEffect)(function () {
         function getPromiseInitialValue() {
             return __awaiter(this, void 0, void 0, function () {
