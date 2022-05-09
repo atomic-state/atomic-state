@@ -209,10 +209,13 @@ function useAtomCreate(init) {
         if (typeof vIfPersistence !== "undefined") {
             if (!hydrated.current) {
                 hydrated.current = true;
-                setTimeout(function () {
+                var tm_1 = setTimeout(function () {
                     updateState(vIfPersistence);
                     setVIfPersistence(undefined);
                 }, 0);
+                return function () {
+                    clearTimeout(tm_1);
+                };
             }
         }
     }, [vIfPersistence, updateState, hydrated]);
@@ -264,10 +267,12 @@ function useAtomCreate(init) {
     }, [init.name]);
     (0, react_1.useEffect)(function () {
         var handler = function (e) { return __awaiter(_this, void 0, void 0, function () {
+            var tm_2;
             return __generator(this, function (_a) {
                 if (e.hookCall !== hookCall) {
-                    setTimeout(function () {
+                    tm_2 = setTimeout(function () {
                         setState(e.payload);
+                        clearTimeout(tm_2);
                     }, 0);
                 }
                 return [2 /*return*/];
@@ -372,7 +377,7 @@ function filter(init) {
             }
         }, [initialValue]);
         function renderValue(e) {
-            setTimeout(function () {
+            var tm = setTimeout(function () {
                 var newValue = get(getObject);
                 if (newValue instanceof Promise) {
                     newValue.then(function (v) {
@@ -384,6 +389,7 @@ function filter(init) {
                     defaultFiltersValues["".concat(name)] = newValue;
                     setFilterValue(newValue);
                 }
+                clearTimeout(tm);
             }, 0);
         }
         (0, react_1.useEffect)(function () {
