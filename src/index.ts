@@ -107,7 +107,7 @@ function useAtomCreate<R>(init: Atom<R>) {
 
     const isPromiseValue = initialIfFnOrPromise instanceof Promise
 
-    const initVal = isDefined
+    let initVal = isDefined
       ? typeof defaultAtomsValues[init.name] === "undefined"
         ? !isPromiseValue
           ? typeof initialIfFnOrPromise !== "undefined"
@@ -125,9 +125,7 @@ function useAtomCreate<R>(init: Atom<R>) {
             defaultAtomsInAtomic[init.name]
           ) {
             defaultAtomsInAtomic[init.name] = false
-            defaultAtomsValues[init.name] = JSON.parse(
-              localStorage[`store-${init.name}`] as string
-            )
+            defaultAtomsValues[init.name] = isPromiseValue ? undefined : initVal
           }
         }
       } else {
@@ -139,7 +137,7 @@ function useAtomCreate<R>(init: Atom<R>) {
         ? typeof localStorage !== "undefined"
           ? typeof localStorage[`store-${init.name}`] !== "undefined"
             ? // Only return value from localStorage if not loaded to memory
-              defaultAtomsValues[init.name]
+              initVal
             : isPromiseValue
             ? undefined
             : initVal
@@ -153,6 +151,14 @@ function useAtomCreate<R>(init: Atom<R>) {
       return initVal
     }
   })()
+
+  const [vIfPersistence, setVIfPersistence] = useState(() => {
+    try {
+      return JSON.parse(localStorage[`store-${init.name}`] as string)
+    } catch (err) {
+      return initialValue
+    }
+  })
 
   useEffect(() => {
     function storageListener() {
@@ -215,6 +221,14 @@ function useAtomCreate<R>(init: Atom<R>) {
     },
     [hookCall, notify, init.name]
   )
+
+  useEffect(() => {
+    if (typeof vIfPersistence !== "undefined") {
+      updateState(vIfPersistence)
+      setVIfPersistence(undefined)
+    }
+  }, [vIfPersistence, updateState])
+
   useEffect(() => {
     async function getPromiseInitialValue() {
       // Only resolve promise if default or resolved value are not present
