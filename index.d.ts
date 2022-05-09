@@ -12,6 +12,12 @@ export declare type Atom<T = any> = {
     name: string;
     default?: T | Promise<T> | (() => Promise<T>) | (() => T);
     localStoragePersistence?: boolean;
+    /**
+     * This is for use when `localStoragePersistence` is `true`
+     * By default it's false. This is to prevent hydration errors.
+     * If set to `false`, data from localStorage will be loaded during render, not after.
+     */
+    hydration?: boolean;
     actions?: {
         [name: string]: (st: {
             args: any;
