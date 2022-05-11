@@ -4,10 +4,9 @@ on:
     types: [created]
 jobs:
   testing:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: atomic-state/atomic-state/.github/workflows/test.yml@master
-  pulish:
+    uses: atomic-state/atomic-state/.github/workflows/test.yml@master
+
+  publish:
     needs: test
     runs-on: ubuntu-latest
     steps:
