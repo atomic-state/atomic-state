@@ -81,7 +81,7 @@ var AtomicState = function (_a) {
 exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
-    var _a = init.hydration, hydration = _a === void 0 ? true : _a;
+    var _a = init.hydration, hydration = _a === void 0 ? true : _a, _b = init.effects, effects = _b === void 0 ? [] : _b;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
     var isDefined = typeof init.default !== "undefined";
     var initialValue = (function getInitialValue() {
@@ -140,7 +140,7 @@ function useAtomCreate(init) {
             return initVal;
         }
     })();
-    var _b = (0, react_1.useState)(function () {
+    var _c = (0, react_1.useState)(function () {
         try {
             if (hydration) {
                 return JSON.parse(localStorage["store-".concat(init.name)]);
@@ -151,7 +151,7 @@ function useAtomCreate(init) {
         catch (err) {
             return initialValue;
         }
-    }), vIfPersistence = _b[0], setVIfPersistence = _b[1];
+    }), vIfPersistence = _c[0], setVIfPersistence = _c[1];
     (0, react_1.useEffect)(function () {
         function storageListener() {
             if (typeof localStorage !== "undefined") {
@@ -180,25 +180,33 @@ function useAtomCreate(init) {
         }
         return function () { };
     }, [init.name]);
-    var _c = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
+    var _d = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
         ? undefined
         : (function () {
             defaultAtomsValues[init.name] = initialValue;
             return initialValue;
-        })()), state = _c[0], setState = _c[1];
+        })()), state = _d[0], setState = _d[1];
     if (!pendingAtoms[init.name]) {
         pendingAtoms[init.name] = 0;
     }
     if (!atomEmitters[init.name]) {
         atomEmitters[init.name] = createEmitter();
     }
-    var _d = atomEmitters[init.name], emitter = _d.emitter, notify = _d.notify;
+    var _e = atomEmitters[init.name], emitter = _e.emitter, notify = _e.notify;
     var updateState = (0, react_1.useCallback)(function (v) {
         setState(function (previous) {
             // First notify other subscribers
             var newValue = typeof v === "function" ? v(previous) : v;
             defaultAtomsValues[init.name] = newValue;
+            for (var _i = 0, effects_1 = effects; _i < effects_1.length; _i++) {
+                var effect = effects_1[_i];
+                effect({
+                    previous: previous,
+                    state: newValue,
+                    dispatch: updateState,
+                });
+            }
             notify(init.name, hookCall, newValue);
             // Finally update state
             return newValue;

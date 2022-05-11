@@ -37,6 +37,11 @@ export type Atom<T = any> = {
       dispatch: Dispatch<SetStateAction<T>>
     }) => any
   }
+  effects?: ((s: {
+    previous: T
+    state: T
+    dispatch: Dispatch<SetStateAction<T>>
+  }) => void)[]
 }
 
 type ActionsObjectType = { [name: string]: (args?: any) => any }
@@ -97,7 +102,7 @@ export const AtomicState: React.FC<{
 }
 
 function useAtomCreate<R>(init: Atom<R>) {
-  const { hydration = true } = init
+  const { hydration = true, effects = [] } = init
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
   const isDefined = typeof init.default !== "undefined"
@@ -228,6 +233,13 @@ function useAtomCreate<R>(init: Atom<R>) {
         // First notify other subscribers
         const newValue = typeof v === "function" ? (v as any)(previous) : v
         defaultAtomsValues[init.name] = newValue
+        for (let effect of effects) {
+          effect({
+            previous,
+            state: newValue,
+            dispatch: updateState,
+          })
+        }
         notify(init.name, hookCall, newValue)
         // Finally update state
         return newValue
