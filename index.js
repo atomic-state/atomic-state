@@ -199,13 +199,19 @@ function useAtomCreate(init) {
             // First notify other subscribers
             var newValue = typeof v === "function" ? v(previous) : v;
             defaultAtomsValues[init.name] = newValue;
+            var _loop_1 = function (effect) {
+                var tm = setTimeout(function () {
+                    effect({
+                        previous: previous,
+                        state: newValue,
+                        dispatch: updateState,
+                    });
+                    clearTimeout(tm);
+                }, 0);
+            };
             for (var _i = 0, effects_1 = effects; _i < effects_1.length; _i++) {
                 var effect = effects_1[_i];
-                effect({
-                    previous: previous,
-                    state: newValue,
-                    dispatch: updateState,
-                });
+                _loop_1(effect);
             }
             notify(init.name, hookCall, newValue);
             // Finally update state

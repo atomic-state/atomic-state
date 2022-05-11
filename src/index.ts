@@ -234,11 +234,14 @@ function useAtomCreate<R>(init: Atom<R>) {
         const newValue = typeof v === "function" ? (v as any)(previous) : v
         defaultAtomsValues[init.name] = newValue
         for (let effect of effects) {
-          effect({
-            previous,
-            state: newValue,
-            dispatch: updateState,
-          })
+          const tm = setTimeout(() => {
+            effect({
+              previous,
+              state: newValue,
+              dispatch: updateState,
+            })
+            clearTimeout(tm)
+          }, 0)
         }
         notify(init.name, hookCall, newValue)
         // Finally update state
