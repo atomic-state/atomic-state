@@ -25,6 +25,11 @@ export declare type Atom<T = any> = {
             dispatch: Dispatch<SetStateAction<T>>;
         }) => any;
     };
+    effects?: ((s: {
+        previous: T;
+        state: T;
+        dispatch: Dispatch<SetStateAction<T>>;
+    }) => void)[];
 };
 declare type ActionsObjectType = {
     [name: string]: (args?: any) => any;
