@@ -222,13 +222,16 @@ function useAtomCreate(init) {
     (0, react_1.useEffect)(function () {
         if (typeof vIfPersistence !== "undefined") {
             if (!hydrated.current) {
-                hydrated.current = true;
-                var tm_1 = setTimeout(function () {
+                var tm1_1 = setTimeout(function () {
                     updateState(vIfPersistence);
+                }, 0);
+                var tm2_1 = setTimeout(function () {
                     setVIfPersistence(undefined);
+                    hydrated.current = true;
                 }, 0);
                 return function () {
-                    clearTimeout(tm_1);
+                    clearTimeout(tm1_1);
+                    clearTimeout(tm2_1);
                 };
             }
         }
@@ -281,12 +284,12 @@ function useAtomCreate(init) {
     }, [init.name]);
     (0, react_1.useEffect)(function () {
         var handler = function (e) { return __awaiter(_this, void 0, void 0, function () {
-            var tm_2;
+            var tm_1;
             return __generator(this, function (_a) {
                 if (e.hookCall !== hookCall) {
-                    tm_2 = setTimeout(function () {
+                    tm_1 = setTimeout(function () {
                         setState(e.payload);
-                        clearTimeout(tm_2);
+                        clearTimeout(tm_1);
                     }, 0);
                 }
                 return [2 /*return*/];
