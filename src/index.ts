@@ -256,13 +256,17 @@ function useAtomCreate<R>(init: Atom<R>) {
   useEffect(() => {
     if (typeof vIfPersistence !== "undefined") {
       if (!hydrated.current) {
-        hydrated.current = true
-        const tm = setTimeout(() => {
+        const tm1 = setTimeout(() => {
           updateState(vIfPersistence)
+        }, 0)
+
+        const tm2 = setTimeout(() => {
           setVIfPersistence(undefined)
+          hydrated.current = true
         }, 0)
         return () => {
-          clearTimeout(tm)
+          clearTimeout(tm1)
+          clearTimeout(tm2)
         }
       }
     }
