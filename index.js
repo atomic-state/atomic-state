@@ -81,7 +81,8 @@ var AtomicState = function (_a) {
 exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
-    var _a = init.hydration, hydration = _a === void 0 ? true : _a, _b = init.effects, effects = _b === void 0 ? [] : _b;
+    var _a = init.hydration, hydration = _a === void 0 ? true : _a, _b = init.effects, effects = _b === void 0 ? [] : _b, persist = init.persist, localStoragePersistence = init.localStoragePersistence;
+    var persistence = localStoragePersistence || persist;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
     var isDefined = typeof init.default !== "undefined";
     var initialValue = (function getInitialValue() {
@@ -103,7 +104,7 @@ function useAtomCreate(init) {
                 : defaultAtomsValues[init.name]
             : defaultAtomsValues[init.name];
         try {
-            if (init.localStoragePersistence) {
+            if (persistence) {
                 if (typeof localStorage !== "undefined") {
                     if (typeof defaultAtomsValues[init.name] === "undefined" ||
                         defaultAtomsInAtomic[init.name]) {
@@ -121,7 +122,7 @@ function useAtomCreate(init) {
                     defaultAtomsValues[init.name] = initVal;
                 }
             }
-            return init.localStoragePersistence
+            return persistence
                 ? typeof localStorage !== "undefined"
                     ? typeof localStorage["store-".concat(init.name)] !== "undefined"
                         ? // Only return value from localStorage if not loaded to memory
@@ -165,7 +166,7 @@ function useAtomCreate(init) {
                 }
             }
         }
-        if (init.localStoragePersistence) {
+        if (persistence) {
             if (typeof window !== "undefined") {
                 var canListen = typeof window.addEventListener !== "undefined";
                 if (canListen) {
@@ -303,7 +304,7 @@ function useAtomCreate(init) {
     }, []);
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
-            if (init.localStoragePersistence) {
+            if (persistence) {
                 localStorage.setItem("store-".concat(init.name), JSON.stringify(state));
             }
             else {
@@ -312,7 +313,7 @@ function useAtomCreate(init) {
                 }
             }
         }
-    }, [init.name, init.localStoragePersistence, state]);
+    }, [init.name, persistence, state]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     var actions = (0, react_1.useMemo)(function () { return init.actions || {}; }, []);
     var __actions = (0, react_1.useMemo)(function () {
