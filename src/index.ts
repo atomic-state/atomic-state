@@ -25,6 +25,10 @@ export type Atom<T = any> = {
   default?: T | Promise<T> | (() => Promise<T>) | (() => T)
   localStoragePersistence?: boolean
   /**
+   * Short for `localStoragePersistence`
+   */
+  persist?: boolean
+  /**
    * This is for use when `localStoragePersistence` is `true`
    * By default it's false. This is to prevent hydration errors.
    * If set to `false`, data from localStorage will be loaded during render, not after.
@@ -102,7 +106,15 @@ export const AtomicState: React.FC<{
 }
 
 function useAtomCreate<R>(init: Atom<R>) {
-  const { hydration = true, effects = [] } = init
+  const {
+    hydration = true,
+    effects = [],
+    persist,
+    localStoragePersistence,
+  } = init
+
+  const persistence = localStoragePersistence || persist
+
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
   const isDefined = typeof init.default !== "undefined"
@@ -131,7 +143,7 @@ function useAtomCreate<R>(init: Atom<R>) {
       : defaultAtomsValues[init.name]
 
     try {
-      if (init.localStoragePersistence) {
+      if (persistence) {
         if (typeof localStorage !== "undefined") {
           if (
             typeof defaultAtomsValues[init.name] === "undefined" ||
@@ -150,7 +162,7 @@ function useAtomCreate<R>(init: Atom<R>) {
           defaultAtomsValues[init.name] = initVal
         }
       }
-      return init.localStoragePersistence
+      return persistence
         ? typeof localStorage !== "undefined"
           ? typeof localStorage[`store-${init.name}`] !== "undefined"
             ? // Only return value from localStorage if not loaded to memory
@@ -191,7 +203,7 @@ function useAtomCreate<R>(init: Atom<R>) {
         }
       }
     }
-    if (init.localStoragePersistence) {
+    if (persistence) {
       if (typeof window !== "undefined") {
         const canListen = typeof window.addEventListener !== "undefined"
         if (canListen) {
@@ -334,7 +346,7 @@ function useAtomCreate<R>(init: Atom<R>) {
 
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
-      if (init.localStoragePersistence) {
+      if (persistence) {
         localStorage.setItem(`store-${init.name}`, JSON.stringify(state))
       } else {
         if (typeof localStorage[`store-${init.name}`] !== "undefined") {
@@ -342,7 +354,7 @@ function useAtomCreate<R>(init: Atom<R>) {
         }
       }
     }
-  }, [init.name, init.localStoragePersistence, state])
+  }, [init.name, persistence, state])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const actions = useMemo(() => init.actions || {}, [])
