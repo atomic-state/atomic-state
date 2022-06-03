@@ -195,30 +195,68 @@ function useAtomCreate(init) {
         atomEmitters[init.name] = createEmitter();
     }
     var _e = atomEmitters[init.name], emitter = _e.emitter, notify = _e.notify;
-    var updateState = (0, react_1.useCallback)(function (v) {
-        setState(function (previous) {
-            // First notify other subscribers
-            var newValue = typeof v === "function" ? v(previous) : v;
-            defaultAtomsValues[init.name] = newValue;
-            var _loop_1 = function (effect) {
-                var tm = setTimeout(function () {
-                    effect({
-                        previous: previous,
-                        state: newValue,
-                        dispatch: updateState,
-                    });
-                    clearTimeout(tm);
-                }, 0);
-            };
-            for (var _i = 0, effects_1 = effects; _i < effects_1.length; _i++) {
-                var effect = effects_1[_i];
-                _loop_1(effect);
+    var updateState = (0, react_1.useCallback)(function (v) { return __awaiter(_this, void 0, void 0, function () {
+        var willCancel, newValue, _a, _loop_1, _i, effects_1, effect, tm_1;
+        var _this = this;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    willCancel = false;
+                    if (!(typeof v === "function")) return [3 /*break*/, 2];
+                    return [4 /*yield*/, v(state)];
+                case 1:
+                    _a = _b.sent();
+                    return [3 /*break*/, 3];
+                case 2:
+                    _a = v;
+                    _b.label = 3;
+                case 3:
+                    newValue = _a;
+                    defaultAtomsValues[init.name] = newValue;
+                    try {
+                        _loop_1 = function (effect) {
+                            var tm = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
+                                var cancelStateUpdate;
+                                return __generator(this, function (_a) {
+                                    switch (_a.label) {
+                                        case 0: return [4 /*yield*/, effect({
+                                                previous: state,
+                                                state: newValue,
+                                                dispatch: updateState,
+                                            })];
+                                        case 1:
+                                            cancelStateUpdate = (_a.sent());
+                                            if (typeof cancelStateUpdate !== "undefined" &&
+                                                !cancelStateUpdate) {
+                                                willCancel = true;
+                                            }
+                                            clearTimeout(tm);
+                                            return [2 /*return*/];
+                                    }
+                                });
+                            }); }, 0);
+                        };
+                        for (_i = 0, effects_1 = effects; _i < effects_1.length; _i++) {
+                            effect = effects_1[_i];
+                            _loop_1(effect);
+                        }
+                    }
+                    catch (err) {
+                    }
+                    finally {
+                        tm_1 = setTimeout(function () {
+                            if (!willCancel) {
+                                notify(init.name, hookCall, newValue);
+                                // Finally update state
+                                setState(newValue);
+                                clearTimeout(tm_1);
+                            }
+                        }, 0);
+                    }
+                    return [2 /*return*/];
             }
-            notify(init.name, hookCall, newValue);
-            // Finally update state
-            return newValue;
         });
-    }, [hookCall, notify, init.name]);
+    }); }, [hookCall, notify, state, init.name]);
     var hydrated = (0, react_1.useRef)(false);
     (0, react_1.useEffect)(function () {
         if (typeof vIfPersistence !== "undefined") {
@@ -285,12 +323,12 @@ function useAtomCreate(init) {
     }, [init.name]);
     (0, react_1.useEffect)(function () {
         var handler = function (e) { return __awaiter(_this, void 0, void 0, function () {
-            var tm_1;
+            var tm_2;
             return __generator(this, function (_a) {
                 if (e.hookCall !== hookCall) {
-                    tm_1 = setTimeout(function () {
+                    tm_2 = setTimeout(function () {
                         setState(e.payload);
-                        clearTimeout(tm_1);
+                        clearTimeout(tm_2);
                     }, 0);
                 }
                 return [2 /*return*/];

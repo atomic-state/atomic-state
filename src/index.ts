@@ -240,27 +240,43 @@ function useAtomCreate<R>(init: Atom<R>) {
   const { emitter, notify } = atomEmitters[init.name]
 
   const updateState: Dispatch<SetStateAction<R>> = useCallback(
-    (v) => {
-      setState((previous) => {
-        // First notify other subscribers
-        const newValue = typeof v === "function" ? (v as any)(previous) : v
-        defaultAtomsValues[init.name] = newValue
+    async (v) => {
+      let willCancel = false
+      // First notify other subscribers
+      const newValue = typeof v === "function" ? await (v as any)(state) : v
+
+      defaultAtomsValues[init.name] = newValue
+
+      try {
         for (let effect of effects) {
-          const tm = setTimeout(() => {
-            effect({
-              previous,
+          const tm = setTimeout(async () => {
+            const cancelStateUpdate = (await effect({
+              previous: state,
               state: newValue,
               dispatch: updateState,
-            })
+            })) as unknown as boolean
+            if (
+              typeof cancelStateUpdate !== "undefined" &&
+              !cancelStateUpdate
+            ) {
+              willCancel = true
+            }
             clearTimeout(tm)
           }, 0)
         }
-        notify(init.name, hookCall, newValue)
-        // Finally update state
-        return newValue
-      })
+      } catch (err) {
+      } finally {
+        const tm = setTimeout(() => {
+          if (!willCancel) {
+            notify(init.name, hookCall, newValue)
+            // Finally update state
+            setState(newValue)
+            clearTimeout(tm)
+          }
+        }, 0)
+      }
     },
-    [hookCall, notify, init.name]
+    [hookCall, notify, state, init.name]
   )
 
   const hydrated = useRef(false)
