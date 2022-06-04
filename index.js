@@ -62,6 +62,7 @@ var defaultAtomsValues = {};
 var defaultAtomsInAtomic = {};
 var defaultFiltersInAtomic = {};
 var pendingAtoms = {};
+var atomActionsRun = {};
 var AtomicState = function (_a) {
     var children = _a.children, atoms = _a.atoms, filters = _a.filters;
     if (atoms) {
@@ -82,6 +83,7 @@ exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
     var _a = init.hydration, hydration = _a === void 0 ? true : _a, _b = init.effects, effects = _b === void 0 ? [] : _b, persist = init.persist, localStoragePersistence = init.localStoragePersistence;
+    var _c = (0, react_1.useState)(false), setup = _c[0], setSetup = _c[1];
     var persistence = localStoragePersistence || persist;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
     var isDefined = typeof init.default !== "undefined";
@@ -141,7 +143,7 @@ function useAtomCreate(init) {
             return initVal;
         }
     })();
-    var _c = (0, react_1.useState)(function () {
+    var _d = (0, react_1.useState)(function () {
         try {
             if (hydration) {
                 return JSON.parse(localStorage["store-".concat(init.name)]);
@@ -152,7 +154,7 @@ function useAtomCreate(init) {
         catch (err) {
             return initialValue;
         }
-    }), vIfPersistence = _c[0], setVIfPersistence = _c[1];
+    }), vIfPersistence = _d[0], setVIfPersistence = _d[1];
     (0, react_1.useEffect)(function () {
         function storageListener() {
             if (typeof localStorage !== "undefined") {
@@ -181,20 +183,20 @@ function useAtomCreate(init) {
         }
         return function () { };
     }, [init.name]);
-    var _d = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
+    var _e = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
         ? undefined
         : (function () {
             defaultAtomsValues[init.name] = initialValue;
             return initialValue;
-        })()), state = _d[0], setState = _d[1];
+        })()), state = _e[0], setState = _e[1];
     if (!pendingAtoms[init.name]) {
         pendingAtoms[init.name] = 0;
     }
     if (!atomEmitters[init.name]) {
         atomEmitters[init.name] = createEmitter();
     }
-    var _e = atomEmitters[init.name], emitter = _e.emitter, notify = _e.notify;
+    var _f = atomEmitters[init.name], emitter = _f.emitter, notify = _f.notify;
     var updateState = (0, react_1.useCallback)(function (v) { return __awaiter(_this, void 0, void 0, function () {
         var willCancel, newValue, _a, _loop_1, _i, effects_1, effect, tm_1;
         var _this = this;
@@ -214,31 +216,36 @@ function useAtomCreate(init) {
                     newValue = _a;
                     defaultAtomsValues[init.name] = newValue;
                     try {
-                        _loop_1 = function (effect) {
-                            var tm = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
-                                var cancelStateUpdate;
-                                return __generator(this, function (_a) {
-                                    switch (_a.label) {
-                                        case 0: return [4 /*yield*/, effect({
-                                                previous: state,
-                                                state: newValue,
-                                                dispatch: updateState,
-                                            })];
-                                        case 1:
-                                            cancelStateUpdate = (_a.sent());
-                                            if (typeof cancelStateUpdate !== "undefined" &&
-                                                !cancelStateUpdate) {
-                                                willCancel = true;
-                                            }
-                                            clearTimeout(tm);
-                                            return [2 /*return*/];
-                                    }
-                                });
-                            }); }, 0);
-                        };
-                        for (_i = 0, effects_1 = effects; _i < effects_1.length; _i++) {
-                            effect = effects_1[_i];
-                            _loop_1(effect);
+                        if (setup || !hydration || !persist) {
+                            _loop_1 = function (effect) {
+                                var tm = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
+                                    var cancelStateUpdate;
+                                    return __generator(this, function (_a) {
+                                        switch (_a.label) {
+                                            case 0: return [4 /*yield*/, effect({
+                                                    previous: state,
+                                                    state: newValue,
+                                                    dispatch: updateState,
+                                                })];
+                                            case 1:
+                                                cancelStateUpdate = (_a.sent());
+                                                if (typeof cancelStateUpdate !== "undefined" &&
+                                                    !cancelStateUpdate) {
+                                                    willCancel = true;
+                                                }
+                                                clearTimeout(tm);
+                                                return [2 /*return*/];
+                                        }
+                                    });
+                                }); }, 0);
+                            };
+                            for (_i = 0, effects_1 = effects; _i < effects_1.length; _i++) {
+                                effect = effects_1[_i];
+                                _loop_1(effect);
+                            }
+                        }
+                        else {
+                            setSetup(true);
                         }
                     }
                     catch (err) {
@@ -246,7 +253,12 @@ function useAtomCreate(init) {
                     finally {
                         tm_1 = setTimeout(function () {
                             if (!willCancel) {
-                                notify(init.name, hookCall, newValue);
+                                if (setup) {
+                                    notify(init.name, hookCall, newValue);
+                                }
+                                else {
+                                    notify(init.name, hookCall, newValue);
+                                }
                                 // Finally update state
                                 setState(newValue);
                                 clearTimeout(tm_1);
@@ -256,25 +268,27 @@ function useAtomCreate(init) {
                     return [2 /*return*/];
             }
         });
-    }); }, [hookCall, notify, state, init.name]);
+    }); }, [hookCall, notify, state, setup, init.name]);
     var hydrated = (0, react_1.useRef)(false);
     (0, react_1.useEffect)(function () {
-        if (typeof vIfPersistence !== "undefined") {
-            if (!hydrated.current) {
-                var tm1_1 = setTimeout(function () {
-                    updateState(vIfPersistence);
-                }, 0);
-                var tm2_1 = setTimeout(function () {
-                    setVIfPersistence(undefined);
-                    hydrated.current = true;
-                }, 0);
-                return function () {
-                    clearTimeout(tm1_1);
-                    clearTimeout(tm2_1);
-                };
+        if (persistence) {
+            if (typeof vIfPersistence !== "undefined") {
+                if (!hydrated.current) {
+                    var tm1_1 = setTimeout(function () {
+                        updateState(vIfPersistence);
+                    }, 0);
+                    var tm2_1 = setTimeout(function () {
+                        setVIfPersistence(undefined);
+                        hydrated.current = true;
+                    }, 0);
+                    return function () {
+                        clearTimeout(tm1_1);
+                        clearTimeout(tm2_1);
+                    };
+                }
             }
         }
-    }, [vIfPersistence, updateState, hydrated]);
+    }, [vIfPersistence, persistence, updateState, hydrated]);
     (0, react_1.useEffect)(function () {
         function getPromiseInitialValue() {
             return __awaiter(this, void 0, void 0, function () {
@@ -298,6 +312,7 @@ function useAtomCreate(init) {
                                 if (typeof v !== "undefined") {
                                     v.then(function (val) {
                                         defaultAtomsValues[init.name] = val;
+                                        // notify(init.name, hookCall, val)
                                         updateState(val);
                                     });
                                 }
@@ -339,7 +354,7 @@ function useAtomCreate(init) {
             emitter.removeListener(init.name, handler);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [setup]);
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
             if (persistence) {
@@ -383,6 +398,7 @@ exports.atom = atom;
 exports.createAtom = atom;
 var defaultFiltersValues = {};
 var objectFilters = {};
+var resolvedFilters = {};
 function filter(init) {
     var name = init.name, get = init.get;
     var filterDeps = {};

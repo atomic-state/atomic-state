@@ -74,6 +74,7 @@ const defaultAtomsInAtomic: any = {}
 const defaultFiltersInAtomic: any = {}
 
 const pendingAtoms: any = {}
+const atomActionsRun: any = {}
 
 export const AtomicState: React.FC<{
   children: any
@@ -112,6 +113,8 @@ function useAtomCreate<R>(init: Atom<R>) {
     persist,
     localStoragePersistence,
   } = init
+
+  const [setup, setSetup] = useState(false)
 
   const persistence = localStoragePersistence || persist
 
@@ -248,27 +251,35 @@ function useAtomCreate<R>(init: Atom<R>) {
       defaultAtomsValues[init.name] = newValue
 
       try {
-        for (let effect of effects) {
-          const tm = setTimeout(async () => {
-            const cancelStateUpdate = (await effect({
-              previous: state,
-              state: newValue,
-              dispatch: updateState,
-            })) as unknown as boolean
-            if (
-              typeof cancelStateUpdate !== "undefined" &&
-              !cancelStateUpdate
-            ) {
-              willCancel = true
-            }
-            clearTimeout(tm)
-          }, 0)
+        if (setup || !hydration || !persist) {
+          for (let effect of effects) {
+            const tm = setTimeout(async () => {
+              const cancelStateUpdate = (await effect({
+                previous: state,
+                state: newValue,
+                dispatch: updateState,
+              })) as unknown as boolean
+              if (
+                typeof cancelStateUpdate !== "undefined" &&
+                !cancelStateUpdate
+              ) {
+                willCancel = true
+              }
+              clearTimeout(tm)
+            }, 0)
+          }
+        } else {
+          setSetup(true)
         }
       } catch (err) {
       } finally {
         const tm = setTimeout(() => {
           if (!willCancel) {
-            notify(init.name, hookCall, newValue)
+            if (setup) {
+              notify(init.name, hookCall, newValue)
+            } else {
+              notify(init.name, hookCall, newValue)
+            }
             // Finally update state
             setState(newValue)
             clearTimeout(tm)
@@ -276,29 +287,31 @@ function useAtomCreate<R>(init: Atom<R>) {
         }, 0)
       }
     },
-    [hookCall, notify, state, init.name]
+
+    [hookCall, notify, state, setup, init.name]
   )
 
   const hydrated = useRef(false)
 
   useEffect(() => {
-    if (typeof vIfPersistence !== "undefined") {
-      if (!hydrated.current) {
-        const tm1 = setTimeout(() => {
-          updateState(vIfPersistence)
-        }, 0)
-
-        const tm2 = setTimeout(() => {
-          setVIfPersistence(undefined)
-          hydrated.current = true
-        }, 0)
-        return () => {
-          clearTimeout(tm1)
-          clearTimeout(tm2)
+    if (persistence) {
+      if (typeof vIfPersistence !== "undefined") {
+        if (!hydrated.current) {
+          const tm1 = setTimeout(() => {
+            updateState(vIfPersistence)
+          }, 0)
+          const tm2 = setTimeout(() => {
+            setVIfPersistence(undefined)
+            hydrated.current = true
+          }, 0)
+          return () => {
+            clearTimeout(tm1)
+            clearTimeout(tm2)
+          }
         }
       }
     }
-  }, [vIfPersistence, updateState, hydrated])
+  }, [vIfPersistence, persistence, updateState, hydrated])
 
   useEffect(() => {
     async function getPromiseInitialValue() {
@@ -317,6 +330,7 @@ function useAtomCreate<R>(init: Atom<R>) {
             if (typeof v !== "undefined") {
               v.then((val) => {
                 defaultAtomsValues[init.name] = val
+                // notify(init.name, hookCall, val)
                 updateState(val as R)
               })
             }
@@ -358,7 +372,7 @@ function useAtomCreate<R>(init: Atom<R>) {
       emitter.removeListener(init.name, handler)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [setup])
 
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
@@ -429,6 +443,8 @@ export type Filter<T = any> = {
 const defaultFiltersValues: any = {}
 
 const objectFilters: any = {}
+
+const resolvedFilters: any = {}
 
 export function filter<R>(init: Filter<R | Promise<R>>) {
   const { name, get: get } = init
