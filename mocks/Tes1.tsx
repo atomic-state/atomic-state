@@ -1,20 +1,14 @@
 import React, { useEffect } from "react"
 import { useDispatch, useValue } from "../"
-import { clicks } from "./atoms"
+import { clicks2 } from "./atoms"
 
 export const RenderCount = () => {
-  const clicksCount = useValue(clicks)
+  const clicksCount = useValue(clicks2)
   return <h2>count is {clicksCount}</h2>
 }
 
 export const IncreaseButton = () => {
-  const setAtomValue = useDispatch(clicks)
-  useEffect(() => {
-    // Reset count when mounting to prevent conflicts with other tests
-    return () => {
-      setAtomValue(0)
-    }
-  }, [])
+  const setAtomValue = useDispatch(clicks2)
   return (
     <div>
       <button onClick={() => setAtomValue((value) => value + 1)}>
