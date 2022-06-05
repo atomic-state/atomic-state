@@ -29,9 +29,11 @@ export type Atom<T = any> = {
    */
   persist?: boolean
   /**
+   * @deprecated
    * This is for use when `localStoragePersistence` is `true`
    * By default it's false. This is to prevent hydration errors.
    * If set to `false`, data from localStorage will be loaded during render, not after.
+   * May have some bugs
    */
   hydration?: boolean
   actions?: {
@@ -74,7 +76,6 @@ const defaultAtomsInAtomic: any = {}
 const defaultFiltersInAtomic: any = {}
 
 const pendingAtoms: any = {}
-const atomActionsRun: any = {}
 
 export const AtomicState: React.FC<{
   children: any
@@ -107,16 +108,11 @@ export const AtomicState: React.FC<{
 }
 
 function useAtomCreate<R>(init: Atom<R>) {
-  const {
-    hydration = true,
-    effects = [],
-    persist,
-    localStoragePersistence,
-  } = init
-
-  const [setup, setSetup] = useState(false)
+  const { effects = [], persist, localStoragePersistence } = init
 
   const persistence = localStoragePersistence || persist
+
+  const hydration = true
 
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
@@ -242,6 +238,10 @@ function useAtomCreate<R>(init: Atom<R>) {
 
   const { emitter, notify } = atomEmitters[init.name]
 
+  const [runEffects, setRunEffects] = useState(false)
+
+  const hydrated = useRef(false)
+
   const updateState: Dispatch<SetStateAction<R>> = useCallback(
     async (v) => {
       let willCancel = false
@@ -251,7 +251,7 @@ function useAtomCreate<R>(init: Atom<R>) {
       defaultAtomsValues[init.name] = newValue
 
       try {
-        if (setup || !hydration || !persist) {
+        if (runEffects || hydrated.current) {
           for (let effect of effects) {
             const tm = setTimeout(async () => {
               const cancelStateUpdate = (await effect({
@@ -268,18 +268,13 @@ function useAtomCreate<R>(init: Atom<R>) {
               clearTimeout(tm)
             }, 0)
           }
-        } else {
-          setSetup(true)
         }
       } catch (err) {
+        setRunEffects(true)
       } finally {
         const tm = setTimeout(() => {
           if (!willCancel) {
-            if (setup) {
-              notify(init.name, hookCall, newValue)
-            } else {
-              notify(init.name, hookCall, newValue)
-            }
+            notify(init.name, hookCall, newValue)
             // Finally update state
             setState(newValue)
             clearTimeout(tm)
@@ -287,31 +282,27 @@ function useAtomCreate<R>(init: Atom<R>) {
         }, 0)
       }
     },
-
-    [hookCall, notify, state, setup, init.name]
+    [hookCall, notify, runEffects, hydrated, state, init.name]
   )
 
-  const hydrated = useRef(false)
-
   useEffect(() => {
-    if (persistence) {
-      if (typeof vIfPersistence !== "undefined") {
-        if (!hydrated.current) {
-          const tm1 = setTimeout(() => {
-            updateState(vIfPersistence)
-          }, 0)
-          const tm2 = setTimeout(() => {
-            setVIfPersistence(undefined)
-            hydrated.current = true
-          }, 0)
-          return () => {
-            clearTimeout(tm1)
-            clearTimeout(tm2)
-          }
+    if (typeof vIfPersistence !== "undefined") {
+      if (!hydrated.current) {
+        const tm1 = setTimeout(() => {
+          updateState(vIfPersistence)
+        }, 0)
+
+        const tm2 = setTimeout(() => {
+          setVIfPersistence(undefined)
+          hydrated.current = true
+        }, 0)
+        return () => {
+          clearTimeout(tm1)
+          clearTimeout(tm2)
         }
       }
     }
-  }, [vIfPersistence, persistence, updateState, hydrated])
+  }, [vIfPersistence, updateState, hydrated])
 
   useEffect(() => {
     async function getPromiseInitialValue() {
@@ -330,7 +321,6 @@ function useAtomCreate<R>(init: Atom<R>) {
             if (typeof v !== "undefined") {
               v.then((val) => {
                 defaultAtomsValues[init.name] = val
-                // notify(init.name, hookCall, val)
                 updateState(val as R)
               })
             }
@@ -372,7 +362,7 @@ function useAtomCreate<R>(init: Atom<R>) {
       emitter.removeListener(init.name, handler)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setup])
+  }, [runEffects])
 
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
@@ -437,14 +427,13 @@ export type FilterGet = {
  */
 export type Filter<T = any> = {
   name?: string
+  default?: T
   get(c: FilterGet): T
 }
 
 const defaultFiltersValues: any = {}
 
 const objectFilters: any = {}
-
-const resolvedFilters: any = {}
 
 export function filter<R>(init: Filter<R | Promise<R>>) {
   const { name, get: get } = init
@@ -465,13 +454,17 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
   const useFilterGet = () => {
     function getInitialValue() {
-      return typeof defaultFiltersValues[`${name}`] === "undefined"
-        ? (() => {
-            return get(getObject)
-          })()
-        : (() => {
-            return defaultFiltersValues[`${name}`]
-          })()
+      try {
+        return typeof defaultFiltersValues[`${name}`] === "undefined"
+          ? (() => {
+              return get(getObject)
+            })()
+          : (() => {
+              return defaultFiltersValues[`${name}`]
+            })()
+      } catch (err) {
+        return init.default
+      }
     }
     const initialValue = getInitialValue()
 

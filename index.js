@@ -62,7 +62,6 @@ var defaultAtomsValues = {};
 var defaultAtomsInAtomic = {};
 var defaultFiltersInAtomic = {};
 var pendingAtoms = {};
-var atomActionsRun = {};
 var AtomicState = function (_a) {
     var children = _a.children, atoms = _a.atoms, filters = _a.filters;
     if (atoms) {
@@ -82,9 +81,9 @@ var AtomicState = function (_a) {
 exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
-    var _a = init.hydration, hydration = _a === void 0 ? true : _a, _b = init.effects, effects = _b === void 0 ? [] : _b, persist = init.persist, localStoragePersistence = init.localStoragePersistence;
-    var _c = (0, react_1.useState)(false), setup = _c[0], setSetup = _c[1];
+    var _a = init.effects, effects = _a === void 0 ? [] : _a, persist = init.persist, localStoragePersistence = init.localStoragePersistence;
     var persistence = localStoragePersistence || persist;
+    var hydration = true;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
     var isDefined = typeof init.default !== "undefined";
     var initialValue = (function getInitialValue() {
@@ -143,7 +142,7 @@ function useAtomCreate(init) {
             return initVal;
         }
     })();
-    var _d = (0, react_1.useState)(function () {
+    var _b = (0, react_1.useState)(function () {
         try {
             if (hydration) {
                 return JSON.parse(localStorage["store-".concat(init.name)]);
@@ -154,7 +153,7 @@ function useAtomCreate(init) {
         catch (err) {
             return initialValue;
         }
-    }), vIfPersistence = _d[0], setVIfPersistence = _d[1];
+    }), vIfPersistence = _b[0], setVIfPersistence = _b[1];
     (0, react_1.useEffect)(function () {
         function storageListener() {
             if (typeof localStorage !== "undefined") {
@@ -183,20 +182,22 @@ function useAtomCreate(init) {
         }
         return function () { };
     }, [init.name]);
-    var _e = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
+    var _c = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
         ? undefined
         : (function () {
             defaultAtomsValues[init.name] = initialValue;
             return initialValue;
-        })()), state = _e[0], setState = _e[1];
+        })()), state = _c[0], setState = _c[1];
     if (!pendingAtoms[init.name]) {
         pendingAtoms[init.name] = 0;
     }
     if (!atomEmitters[init.name]) {
         atomEmitters[init.name] = createEmitter();
     }
-    var _f = atomEmitters[init.name], emitter = _f.emitter, notify = _f.notify;
+    var _d = atomEmitters[init.name], emitter = _d.emitter, notify = _d.notify;
+    var _e = (0, react_1.useState)(false), runEffects = _e[0], setRunEffects = _e[1];
+    var hydrated = (0, react_1.useRef)(false);
     var updateState = (0, react_1.useCallback)(function (v) { return __awaiter(_this, void 0, void 0, function () {
         var willCancel, newValue, _a, _loop_1, _i, effects_1, effect, tm_1;
         var _this = this;
@@ -216,7 +217,7 @@ function useAtomCreate(init) {
                     newValue = _a;
                     defaultAtomsValues[init.name] = newValue;
                     try {
-                        if (setup || !hydration || !persist) {
+                        if (runEffects || hydrated.current) {
                             _loop_1 = function (effect) {
                                 var tm = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
                                     var cancelStateUpdate;
@@ -244,21 +245,14 @@ function useAtomCreate(init) {
                                 _loop_1(effect);
                             }
                         }
-                        else {
-                            setSetup(true);
-                        }
                     }
                     catch (err) {
+                        setRunEffects(true);
                     }
                     finally {
                         tm_1 = setTimeout(function () {
                             if (!willCancel) {
-                                if (setup) {
-                                    notify(init.name, hookCall, newValue);
-                                }
-                                else {
-                                    notify(init.name, hookCall, newValue);
-                                }
+                                notify(init.name, hookCall, newValue);
                                 // Finally update state
                                 setState(newValue);
                                 clearTimeout(tm_1);
@@ -268,27 +262,24 @@ function useAtomCreate(init) {
                     return [2 /*return*/];
             }
         });
-    }); }, [hookCall, notify, state, setup, init.name]);
-    var hydrated = (0, react_1.useRef)(false);
+    }); }, [hookCall, notify, runEffects, hydrated, state, init.name]);
     (0, react_1.useEffect)(function () {
-        if (persistence) {
-            if (typeof vIfPersistence !== "undefined") {
-                if (!hydrated.current) {
-                    var tm1_1 = setTimeout(function () {
-                        updateState(vIfPersistence);
-                    }, 0);
-                    var tm2_1 = setTimeout(function () {
-                        setVIfPersistence(undefined);
-                        hydrated.current = true;
-                    }, 0);
-                    return function () {
-                        clearTimeout(tm1_1);
-                        clearTimeout(tm2_1);
-                    };
-                }
+        if (typeof vIfPersistence !== "undefined") {
+            if (!hydrated.current) {
+                var tm1_1 = setTimeout(function () {
+                    updateState(vIfPersistence);
+                }, 0);
+                var tm2_1 = setTimeout(function () {
+                    setVIfPersistence(undefined);
+                    hydrated.current = true;
+                }, 0);
+                return function () {
+                    clearTimeout(tm1_1);
+                    clearTimeout(tm2_1);
+                };
             }
         }
-    }, [vIfPersistence, persistence, updateState, hydrated]);
+    }, [vIfPersistence, updateState, hydrated]);
     (0, react_1.useEffect)(function () {
         function getPromiseInitialValue() {
             return __awaiter(this, void 0, void 0, function () {
@@ -312,7 +303,6 @@ function useAtomCreate(init) {
                                 if (typeof v !== "undefined") {
                                     v.then(function (val) {
                                         defaultAtomsValues[init.name] = val;
-                                        // notify(init.name, hookCall, val)
                                         updateState(val);
                                     });
                                 }
@@ -354,7 +344,7 @@ function useAtomCreate(init) {
             emitter.removeListener(init.name, handler);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [setup]);
+    }, [runEffects]);
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
             if (persistence) {
@@ -398,7 +388,6 @@ exports.atom = atom;
 exports.createAtom = atom;
 var defaultFiltersValues = {};
 var objectFilters = {};
-var resolvedFilters = {};
 function filter(init) {
     var name = init.name, get = init.get;
     var filterDeps = {};
@@ -417,13 +406,18 @@ function filter(init) {
     };
     var useFilterGet = function () {
         function getInitialValue() {
-            return typeof defaultFiltersValues["".concat(name)] === "undefined"
-                ? (function () {
-                    return get(getObject);
-                })()
-                : (function () {
-                    return defaultFiltersValues["".concat(name)];
-                })();
+            try {
+                return typeof defaultFiltersValues["".concat(name)] === "undefined"
+                    ? (function () {
+                        return get(getObject);
+                    })()
+                    : (function () {
+                        return defaultFiltersValues["".concat(name)];
+                    })();
+            }
+            catch (err) {
+                return init.default;
+            }
         }
         var initialValue = getInitialValue();
         (0, react_1.useEffect)(function () {

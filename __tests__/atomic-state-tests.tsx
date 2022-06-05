@@ -13,7 +13,12 @@ it("Should increase clicks' atom value", async () => {
   })
 
   await waitFor(() => {
-    expect(CountDisplay.queryByText(/count is /)!.innerHTML).toBe("count is 1")
+    const tm = setTimeout(() => {
+      expect(CountDisplay.queryByText(/count is /)!.innerHTML).toBe(
+        "count is 1"
+      )
+      clearTimeout(tm)
+    }, 0)
   })
 })
 
@@ -28,7 +33,12 @@ it("Should show the double of the count atom", async () => {
   })
 
   await waitFor(() => {
-    expect(CountDisplay.queryByText(/double is /)!.innerHTML).toBe("double is 4")
+    const tm = setTimeout(() => {
+      expect(CountDisplay.queryByText(/double is /)!.innerHTML).toBe(
+        "double is 4"
+      )
+      clearTimeout(tm)
+    }, 0)
   })
 })
 
@@ -44,8 +54,11 @@ it("Should update an atom's value on user input", async () => {
   })
 
   await waitFor(() => {
-    expect(NameDisp.queryByText(/Username:/)!.innerHTML).toBe(
-      "Username: inuyasha"
-    )
+    const tm = setTimeout(() => {
+      expect(NameDisp.queryByText(/Username:/)!.innerHTML).toBe(
+        "Username: inuyasha"
+      )
+      clearTimeout(tm)
+    }, 0)
   })
 })

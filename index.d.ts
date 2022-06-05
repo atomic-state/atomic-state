@@ -17,9 +17,11 @@ export declare type Atom<T = any> = {
      */
     persist?: boolean;
     /**
+     * @deprecated
      * This is for use when `localStoragePersistence` is `true`
      * By default it's false. This is to prevent hydration errors.
      * If set to `false`, data from localStorage will be loaded during render, not after.
+     * May have some bugs
      */
     hydration?: boolean;
     actions?: {
@@ -74,6 +76,7 @@ export declare type FilterGet = {
  */
 export declare type Filter<T = any> = {
     name?: string;
+    default?: T;
     get(c: FilterGet): T;
 };
 export declare function filter<R>(init: Filter<R | Promise<R>>): {
