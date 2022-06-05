@@ -11,7 +11,9 @@ export const IncreaseButton = () => {
   const setAtomValue = useDispatch(clicks)
   useEffect(() => {
     // Reset count when mounting to prevent conflicts with other tests
-    setAtomValue(0)
+    return () => {
+      setAtomValue(0)
+    }
   }, [])
   return (
     <div>
