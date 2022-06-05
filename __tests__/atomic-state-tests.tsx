@@ -18,7 +18,7 @@ it("Should increase clicks' atom value", async () => {
         "count is 1"
       )
       clearTimeout(tm)
-    }, 0)
+    }, 1000)
   })
 })
 
@@ -28,16 +28,6 @@ it("Should show the double of the count atom", async () => {
   act(() => {
     fireEvent.click(Button.getByText(/increase/), null as unknown as Event)
   })
-
-  await waitFor(() => {
-    const tm = setTimeout(() => {
-      expect(CountDisplay.queryByText(/double is /)!.innerHTML).toBe(
-        "double is 2"
-      )
-      clearTimeout(tm)
-    }, 0)
-  })
-
   act(() => {
     fireEvent.click(Button.getByText(/increase/), null as unknown as Event)
   })
@@ -48,9 +38,8 @@ it("Should show the double of the count atom", async () => {
         "double is 4"
       )
       clearTimeout(tm)
-    }, 0)
+    }, 1000)
   })
-
 })
 
 it("Should update an atom's value on user input", async () => {
@@ -70,6 +59,6 @@ it("Should update an atom's value on user input", async () => {
         "Username: inuyasha"
       )
       clearTimeout(tm)
-    }, 0)
+    }, 1000)
   })
 })
