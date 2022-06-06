@@ -20,7 +20,7 @@ import React, {
 /**
  * Atom type
  */
-export type Atom<T = any> = {
+export type Atom<T = any, ActionArgs = any> = {
   name: string
   default?: T | Promise<T> | (() => Promise<T>) | (() => T)
   localStoragePersistence?: boolean
@@ -37,11 +37,11 @@ export type Atom<T = any> = {
    */
   hydration?: boolean
   actions?: {
-    [name: string]: (st: {
-      args: any
+    [E in keyof ActionArgs]: (st: {
+      args: ActionArgs[E]
       state: T
       dispatch: Dispatch<SetStateAction<T>>
-    }) => any
+    }) => void
   }
   effects?: ((s: {
     previous: T
@@ -50,7 +50,9 @@ export type Atom<T = any> = {
   }) => void)[]
 }
 
-type ActionsObjectType = { [name: string]: (args?: any) => any }
+type ActionsObjectType<ArgsTypes = any> = {
+  [E in keyof ArgsTypes]: (args?: ArgsTypes[E]) => any
+}
 
 const atomEmitters: {
   [key: string]: {
@@ -107,7 +109,7 @@ export const AtomicState: React.FC<{
   return children
 }
 
-function useAtomCreate<R>(init: Atom<R>) {
+function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const { effects = [], persist, localStoragePersistence } = init
 
   const persistence = localStoragePersistence || persist
@@ -384,7 +386,7 @@ function useAtomCreate<R>(init: Atom<R>) {
         Object.keys(actions).map((key) => [
           key,
           (args?: any) =>
-            actions[key]({
+            (actions as any)[key]({
               args,
               state,
               dispatch: updateState as Dispatch<SetStateAction<R>>,
@@ -395,31 +397,31 @@ function useAtomCreate<R>(init: Atom<R>) {
     [state]
   )
 
-  return [state, updateState, __actions as ActionsObjectType]
+  return [state, updateState, __actions as ActionsObjectType<ActionsArgs>]
 }
 
 /**
  * Creates an atom containing state
  */
-export function atom<R>(init: Atom<R>) {
-  const useCreate = () => useAtomCreate<R>(init)
+export function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>) {
+  const useCreate = () => useAtomCreate<R, ActionsArgs>(init)
   useCreate["atom-name"] = init.name
   useCreate["init-object"] = init
-  return useCreate
+  return useCreate as Atom<R, ActionsArgs>
 }
 export const createAtom = atom
 
-type useAtomType<R> = () => (
+type useAtomType<R, ActionsArgs = any> = () => (
   | R
   | Dispatch<SetStateAction<R>>
-  | ActionsObjectType
+  | ActionsObjectType<ActionsArgs>
 )[]
 
 /**
  * Type for the `get` function of filters
  */
 export type FilterGet = {
-  get<R>(atom: useAtomType<R> | Atom<R>): R
+  get<R>(atom: useAtomType<R> | Atom<R, any>): R
 }
 
 /**
@@ -561,7 +563,7 @@ const objectAtoms: any = {}
 /**
  * Get an atom's value and state setter
  */
-export function useAtom<R>(atom: useAtomType<R> | Atom<R>) {
+export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
   if (typeof atom !== "function") {
     if (typeof objectAtoms[atom.name] === "undefined") {
       objectAtoms[atom.name] = createAtom(atom)
@@ -572,17 +574,17 @@ export function useAtom<R>(atom: useAtomType<R> | Atom<R>) {
     }
   }
 
-  return (typeof atom !== "function" ? objectAtoms[atom.name]() : atom()) as [
-    R,
-    (cb: ((c: R) => R) | R) => void,
-    ActionsObjectType
-  ]
+  return (
+    typeof atom !== "function"
+      ? objectAtoms[atom.name]()
+      : (atom as () => void)()
+  ) as [R, (cb: ((c: R) => R) | R) => void, ActionsObjectType<ActionsArgs>]
 }
 
 /**
  * Get an atom's value
  */
-export function useValue<R>(atom: useAtomType<R> | Atom<R>) {
+export function useValue<R>(atom: useAtomType<R> | Atom<R, any>) {
   return useAtom(atom)[0] as R
 }
 export const useAtomValue = useValue
@@ -590,7 +592,7 @@ export const useAtomValue = useValue
 /**
  * Get the function that updates the atom's value
  */
-export function useDispatch<R>(atom: useAtomType<R> | Atom<R>) {
+export function useDispatch<R>(atom: useAtomType<R> | Atom<R, any>) {
   return useAtom(atom)[1] as (cb: ((c: R) => R) | R) => void
 }
 export const useAtomDispatch = useDispatch
@@ -598,8 +600,10 @@ export const useAtomDispatch = useDispatch
 /**
  * Get the actions of the atom as reducers
  */
-export function useActions<R>(atom: useAtomType<R> | Atom<R>) {
-  return useAtom(atom)[2] as ActionsObjectType
+export function useActions<R, ActionsArgs = any>(
+  atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>
+) {
+  return useAtom(atom)[2] as ActionsObjectType<ActionsArgs>
 }
 export const useAtomActions = useActions
 

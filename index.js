@@ -516,7 +516,9 @@ function useAtom(atom) {
             }
         }
     }
-    return (typeof atom !== "function" ? objectAtoms[atom.name]() : atom());
+    return (typeof atom !== "function"
+        ? objectAtoms[atom.name]()
+        : atom());
 }
 exports.useAtom = useAtom;
 /**
