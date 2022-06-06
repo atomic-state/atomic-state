@@ -17,6 +17,10 @@ export declare type Atom<T = any, ActionArgs = any> = {
      */
     persist?: boolean;
     /**
+     * If false, no warning for duplicate keys will be shown
+     */
+    ignoreKeyWarning?: boolean;
+    /**
      * @deprecated
      * This is for use when `localStoragePersistence` is `true`
      * By default it's false. This is to prevent hydration errors.
@@ -100,12 +104,28 @@ export declare const useAtomDispatch: typeof useDispatch;
  */
 export declare function useActions<R, ActionsArgs = any>(atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>): ActionsObjectType<ActionsArgs>;
 export declare const useAtomActions: typeof useActions;
-export declare function useStorage(): {
-    [key: string]: any;
-};
+/**
+ * Get all localStorage items as an object (they will be JSON parsed). You can pass default values (which work with SSR) and a type argument
+ */
+export declare function useStorage<K = any>(defaults?: K): K;
 export declare const storage: {
-    set(k: string, v: any): Promise<void>;
+    /**
+     * Set an item in localStorage. Its value will be serialized as JSON
+     */
+    set<T = any>(k: string, v: T): void;
+    /**
+     * Remove a localStorage item
+     */
     remove(k: string): Promise<void>;
-    get(k: string): any;
+    /**
+     * Get an item in localStorage. Its value will be JSON parsed. If it does not exist or
+     * is an invalid JSON format, the default value passed in the second argument will be returned
+     */
+    get<T_1 = any>(k: string, def?: T_1): T_1;
 };
+/**
+ * Get a localStorage item. Whenever `storage.set` or `storage.remove` are called,
+ * this hook will update its state
+ */
+export declare function useStorageItem<T = any>(k: string, def?: T): T;
 export {};
