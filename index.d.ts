@@ -8,7 +8,7 @@ import React, { Dispatch, SetStateAction } from "react";
 /**
  * Atom type
  */
-export declare type Atom<T = any> = {
+export declare type Atom<T = any, ActionArgs = any> = {
     name: string;
     default?: T | Promise<T> | (() => Promise<T>) | (() => T);
     localStoragePersistence?: boolean;
@@ -25,11 +25,11 @@ export declare type Atom<T = any> = {
      */
     hydration?: boolean;
     actions?: {
-        [name: string]: (st: {
-            args: any;
+        [E in keyof ActionArgs]: (st: {
+            args: ActionArgs[E];
             state: T;
             dispatch: Dispatch<SetStateAction<T>>;
-        }) => any;
+        }) => void;
     };
     effects?: ((s: {
         previous: T;
@@ -37,8 +37,8 @@ export declare type Atom<T = any> = {
         dispatch: Dispatch<SetStateAction<T>>;
     }) => void)[];
 };
-declare type ActionsObjectType = {
-    [name: string]: (args?: any) => any;
+declare type ActionsObjectType<ArgsTypes = any> = {
+    [E in keyof ArgsTypes]: (args?: ArgsTypes[E]) => any;
 };
 export declare const AtomicState: React.FC<{
     children: any;
@@ -58,18 +58,14 @@ export declare const AtomicState: React.FC<{
 /**
  * Creates an atom containing state
  */
-export declare function atom<R>(init: Atom<R>): {
-    (): (ActionsObjectType | R | React.Dispatch<React.SetStateAction<R>>)[];
-    "atom-name": string;
-    "init-object": Atom<R>;
-};
+export declare function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>): Atom<R, ActionsArgs>;
 export declare const createAtom: typeof atom;
-declare type useAtomType<R> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType)[];
+declare type useAtomType<R, ActionsArgs = any> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType<ActionsArgs>)[];
 /**
  * Type for the `get` function of filters
  */
 export declare type FilterGet = {
-    get<R>(atom: useAtomType<R> | Atom<R>): R;
+    get<R>(atom: useAtomType<R> | Atom<R, any>): R;
 };
 /**
  * Filter type
@@ -88,21 +84,21 @@ export declare function useFilter<T>(f: (() => T | Promise<T>) | Filter<T | Prom
 /**
  * Get an atom's value and state setter
  */
-export declare function useAtom<R>(atom: useAtomType<R> | Atom<R>): [R, (cb: R | ((c: R) => R)) => void, ActionsObjectType];
+export declare function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>): [R, (cb: R | ((c: R) => R)) => void, ActionsObjectType<ActionsArgs>];
 /**
  * Get an atom's value
  */
-export declare function useValue<R>(atom: useAtomType<R> | Atom<R>): R;
+export declare function useValue<R>(atom: useAtomType<R> | Atom<R, any>): R;
 export declare const useAtomValue: typeof useValue;
 /**
  * Get the function that updates the atom's value
  */
-export declare function useDispatch<R>(atom: useAtomType<R> | Atom<R>): (cb: R | ((c: R) => R)) => void;
+export declare function useDispatch<R>(atom: useAtomType<R> | Atom<R, any>): (cb: R | ((c: R) => R)) => void;
 export declare const useAtomDispatch: typeof useDispatch;
 /**
  * Get the actions of the atom as reducers
  */
-export declare function useActions<R>(atom: useAtomType<R> | Atom<R>): ActionsObjectType;
+export declare function useActions<R, ActionsArgs = any>(atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>): ActionsObjectType<ActionsArgs>;
 export declare const useAtomActions: typeof useActions;
 export declare function useStorage(): {
     [key: string]: any;
