@@ -42,7 +42,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.storage = exports.useStorage = exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.useFilter = exports.filter = exports.createAtom = exports.atom = exports.AtomicState = void 0;
+exports.useStorageItem = exports.storage = exports.useStorage = exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.useFilter = exports.filter = exports.createAtom = exports.atom = exports.AtomicState = void 0;
 var events_1 = require("events");
 var react_1 = require("react");
 var atomEmitters = {};
@@ -61,6 +61,7 @@ function createEmitter() {
 var defaultAtomsValues = {};
 var defaultAtomsInAtomic = {};
 var defaultFiltersInAtomic = {};
+var usedKeys = {};
 var pendingAtoms = {};
 var AtomicState = function (_a) {
     var children = _a.children, atoms = _a.atoms, filters = _a.filters;
@@ -379,6 +380,12 @@ function useAtomCreate(init) {
  * Creates an atom containing state
  */
 function atom(init) {
+    if (!init.ignoreKeyWarning) {
+        if (init.name in usedKeys) {
+            console.warn("Duplicate atom name '".concat(init.name, "' found. This could lead to bugs in atom state. To remove this warning add 'ignoreKeyWarning: true' to all atom definitions that use the name '").concat(init.name, "'."));
+        }
+    }
+    usedKeys[init.name] = true;
     var useCreate = function () { return useAtomCreate(init); };
     useCreate["atom-name"] = init.name;
     useCreate["init-object"] = init;
@@ -552,8 +559,11 @@ var storageEmitter = (function () {
     emm.setMaxListeners(Math.pow(10, 10));
     return emm;
 })();
-function useStorage() {
-    var _a = (0, react_1.useState)({}), keys = _a[0], setKeys = _a[1];
+/**
+ * Get all localStorage items as an object (they will be JSON parsed). You can pass default values (which work with SSR) and a type argument
+ */
+function useStorage(defaults) {
+    var _a = (0, react_1.useState)((defaults || {})), keys = _a[0], setKeys = _a[1];
     function updateStore() {
         return __awaiter(this, void 0, void 0, function () {
             var $keys, k;
@@ -563,7 +573,9 @@ function useStorage() {
                     for (k in localStorage) {
                         if (!k.match(/clear|getItem|key|length|removeItem|setItem/)) {
                             try {
-                                $keys[k] = JSON.parse(localStorage[k]);
+                                if (typeof localStorage[k] !== "undefined") {
+                                    $keys[k] = JSON.parse(localStorage[k]);
+                                }
                             }
                             catch (err) {
                                 $keys[k] = localStorage[k];
@@ -582,26 +594,27 @@ function useStorage() {
     (0, react_1.useEffect)(function () {
         storageEmitter.addListener("store-changed", updateStore);
         return function () {
-            storageEmitter.removeListener("store-changes", updateStore);
+            storageEmitter.removeListener("store-changed", updateStore);
         };
     }, []);
     return keys;
 }
 exports.useStorage = useStorage;
 exports.storage = {
+    /**
+     * Set an item in localStorage. Its value will be serialized as JSON
+     */
     set: function (k, v) {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                if (typeof localStorage !== "undefined") {
-                    if (typeof localStorage.setItem === "function") {
-                        localStorage.setItem(k, JSON.stringify(v));
-                        storageEmitter.emit("store-changed", v);
-                    }
-                }
-                return [2 /*return*/];
-            });
-        });
+        if (typeof localStorage !== "undefined") {
+            if (typeof localStorage.setItem === "function") {
+                localStorage.setItem(k, JSON.stringify(v));
+                storageEmitter.emit("store-changed", v);
+            }
+        }
     },
+    /**
+     * Remove a localStorage item
+     */
     remove: function (k) {
         return __awaiter(this, void 0, void 0, function () {
             return __generator(this, function (_a) {
@@ -615,14 +628,19 @@ exports.storage = {
             });
         });
     },
-    get: function (k) {
+    /**
+     * Get an item in localStorage. Its value will be JSON parsed. If it does not exist or
+     * is an invalid JSON format, the default value passed in the second argument will be returned
+     */
+    get: function (k, def) {
+        if (def === void 0) { def = null; }
         if (typeof localStorage !== "undefined") {
             if (typeof localStorage.getItem === "function") {
                 try {
                     return JSON.parse(localStorage.getItem(k));
                 }
                 catch (err) {
-                    return "";
+                    return def;
                 }
             }
             else {
@@ -630,10 +648,42 @@ exports.storage = {
                     return JSON.parse(localStorage[k]);
                 }
                 catch (err) {
-                    return "";
+                    return def;
                 }
             }
         }
+        else {
+            return def;
+        }
     },
 };
+/**
+ * Get a localStorage item. Whenever `storage.set` or `storage.remove` are called,
+ * this hook will update its state
+ */
+function useStorageItem(k, def) {
+    if (def === void 0) { def = null; }
+    var _a = (0, react_1.useState)(def), value = _a[0], setValue = _a[1];
+    var itemListener = function () {
+        if (typeof localStorage !== "undefined") {
+            if (JSON.stringify(localStorage[k]) !== JSON.stringify(def)) {
+                try {
+                    setValue(JSON.parse(localStorage[k]));
+                }
+                catch (err) {
+                    setValue(def);
+                }
+            }
+        }
+    };
+    (0, react_1.useEffect)(function () {
+        itemListener();
+        storageEmitter.addListener("store-changed", itemListener);
+        return function () {
+            storageEmitter.removeListener("store-changed", itemListener);
+        };
+    }, []);
+    return value;
+}
+exports.useStorageItem = useStorageItem;
 //# sourceMappingURL=index.js.map

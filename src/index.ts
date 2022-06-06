@@ -29,6 +29,10 @@ export type Atom<T = any, ActionArgs = any> = {
    */
   persist?: boolean
   /**
+   * If false, no warning for duplicate keys will be shown
+   */
+  ignoreKeyWarning?: boolean
+  /**
    * @deprecated
    * This is for use when `localStoragePersistence` is `true`
    * By default it's false. This is to prevent hydration errors.
@@ -76,6 +80,7 @@ function createEmitter() {
 const defaultAtomsValues: any = {}
 const defaultAtomsInAtomic: any = {}
 const defaultFiltersInAtomic: any = {}
+const usedKeys: any = {}
 
 const pendingAtoms: any = {}
 
@@ -404,6 +409,16 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
  * Creates an atom containing state
  */
 export function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>) {
+  if (!init.ignoreKeyWarning) {
+    if (init.name in usedKeys) {
+      console.warn(
+        `Duplicate atom name '${init.name}' found. This could lead to bugs in atom state. To remove this warning add 'ignoreKeyWarning: true' to all atom definitions that use the name '${init.name}'.`
+      )
+    }
+  }
+
+  usedKeys[init.name] = true
+
   const useCreate = () => useAtomCreate<R, ActionsArgs>(init)
   useCreate["atom-name"] = init.name
   useCreate["init-object"] = init
@@ -617,28 +632,29 @@ const storageEmitter = (() => {
   return emm
 })()
 
-export function useStorage(): {
-  [key: string]: any
-} {
-  const [keys, setKeys] = useState({})
+/**
+ * Get all localStorage items as an object (they will be JSON parsed). You can pass default values (which work with SSR) and a type argument
+ */
+export function useStorage<K = any>(defaults?: K): K {
+  const [keys, setKeys] = useState<K>((defaults || {}) as K)
 
   async function updateStore() {
-    let $keys: {
-      [key: string]: any
-    } = {}
+    let $keys: any = {}
 
     if (typeof localStorage !== "undefined") {
       for (let k in localStorage) {
         if (!k.match(/clear|getItem|key|length|removeItem|setItem/)) {
           try {
-            $keys[k] = JSON.parse(localStorage[k])
+            if (typeof localStorage[k] !== "undefined") {
+              $keys[k] = JSON.parse(localStorage[k])
+            }
           } catch (err) {
             $keys[k] = localStorage[k]
           }
         }
       }
     }
-    setKeys($keys)
+    setKeys($keys as any)
   }
 
   useEffect(() => {
@@ -648,14 +664,17 @@ export function useStorage(): {
   useEffect(() => {
     storageEmitter.addListener("store-changed", updateStore)
     return () => {
-      storageEmitter.removeListener("store-changes", updateStore)
+      storageEmitter.removeListener("store-changed", updateStore)
     }
   }, [])
   return keys
 }
 
 export const storage = {
-  async set(k: string, v: any) {
+  /**
+   * Set an item in localStorage. Its value will be serialized as JSON
+   */
+  set<T = any>(k: string, v: T) {
     if (typeof localStorage !== "undefined") {
       if (typeof localStorage.setItem === "function") {
         localStorage.setItem(k, JSON.stringify(v))
@@ -663,6 +682,9 @@ export const storage = {
       }
     }
   },
+  /**
+   * Remove a localStorage item
+   */
   async remove(k: string) {
     if (typeof localStorage !== "undefined") {
       if (typeof localStorage.removeItem === "function") {
@@ -671,21 +693,61 @@ export const storage = {
       }
     }
   },
-  get(k: string) {
+
+  /**
+   * Get an item in localStorage. Its value will be JSON parsed. If it does not exist or
+   * is an invalid JSON format, the default value passed in the second argument will be returned
+   */
+  get<T = any>(k: string, def: T = null as unknown as T): T {
     if (typeof localStorage !== "undefined") {
       if (typeof localStorage.getItem === "function") {
         try {
           return JSON.parse(localStorage.getItem(k) as string)
         } catch (err) {
-          return ""
+          return def as T
         }
       } else {
         try {
           return JSON.parse(localStorage[k])
         } catch (err) {
-          return ""
+          return def as T
+        }
+      }
+    } else {
+      return def as T
+    }
+  },
+}
+
+/**
+ * Get a localStorage item. Whenever `storage.set` or `storage.remove` are called,
+ * this hook will update its state
+ */
+export function useStorageItem<T = any>(
+  k: string,
+  def: T = null as unknown as T
+) {
+  const [value, setValue] = useState(def)
+
+  const itemListener = () => {
+    if (typeof localStorage !== "undefined") {
+      if (JSON.stringify(localStorage[k]) !== JSON.stringify(def)) {
+        try {
+          setValue(JSON.parse(localStorage[k]))
+        } catch (err) {
+          setValue(def)
         }
       }
     }
-  },
+  }
+
+  useEffect(() => {
+    itemListener()
+    storageEmitter.addListener("store-changed", itemListener)
+    return () => {
+      storageEmitter.removeListener("store-changed", itemListener)
+    }
+  }, [])
+
+  return value
 }
