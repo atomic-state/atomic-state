@@ -405,11 +405,16 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   return [state, updateState, __actions as ActionsObjectType<ActionsArgs>]
 }
 
+const ignoredAtomKeyWarnings: any = {}
+
 /**
  * Creates an atom containing state
  */
 export function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>) {
-  if (!init.ignoreKeyWarning) {
+  if (init.ignoreKeyWarning) {
+    ignoredAtomKeyWarnings[init.name] = true
+  }
+  if (!ignoredAtomKeyWarnings[init.name]) {
     if (init.name in usedKeys) {
       console.warn(
         `Duplicate atom name '${init.name}' found. This could lead to bugs in atom state. To remove this warning add 'ignoreKeyWarning: true' to all atom definitions that use the name '${init.name}'.`
@@ -484,6 +489,11 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       }
     }
     const initialValue = getInitialValue()
+
+    useEffect(() => {
+      // Whenever the filter object / function changes, add atoms deps again
+      get(getObject)
+    }, [init])
 
     useEffect(() => {
       // Only render when using top `AtomicState` to set default filter value
