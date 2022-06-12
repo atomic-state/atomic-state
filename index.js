@@ -376,11 +376,15 @@ function useAtomCreate(init) {
     [state]);
     return [state, updateState, __actions];
 }
+var ignoredAtomKeyWarnings = {};
 /**
  * Creates an atom containing state
  */
 function atom(init) {
-    if (!init.ignoreKeyWarning) {
+    if (init.ignoreKeyWarning) {
+        ignoredAtomKeyWarnings[init.name] = true;
+    }
+    if (!ignoredAtomKeyWarnings[init.name]) {
         if (init.name in usedKeys) {
             console.warn("Duplicate atom name '".concat(init.name, "' found. This could lead to bugs in atom state. To remove this warning add 'ignoreKeyWarning: true' to all atom definitions that use the name '").concat(init.name, "'."));
         }
@@ -427,6 +431,10 @@ function filter(init) {
             }
         }
         var initialValue = getInitialValue();
+        (0, react_1.useEffect)(function () {
+            // Whenever the filter object / function changes, add atoms deps again
+            get(getObject);
+        }, [init]);
         (0, react_1.useEffect)(function () {
             // Only render when using top `AtomicState` to set default filter value
             // This prevents rendering the filter twice in the first render
