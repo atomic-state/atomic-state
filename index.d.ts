@@ -17,6 +17,15 @@ export declare type Atom<T = any, ActionArgs = any> = {
      */
     persist?: boolean;
     /**
+     * If true, `persist` will keep the value in sync between tabs.
+     * By default it's `true`
+     */
+    sync?: boolean;
+    /**
+     * If `persist` is true, this will run whenever the state is updated from another tab. This will not run in the tab that updated the state.
+     */
+    onSync?(message: T): void;
+    /**
      * If false, no warning for duplicate keys will be shown
      */
     ignoreKeyWarning?: boolean;
