@@ -29,6 +29,15 @@ export type Atom<T = any, ActionArgs = any> = {
    */
   persist?: boolean
   /**
+   * If true, `persist` will keep the value in sync between tabs.
+   * By default it's `true`
+   */
+  sync?: boolean
+  /**
+   * If `persist` is true, this will run whenever the state is updated from another tab. This will not run in the tab that updated the state.
+   */
+  onSync?(message: T): void
+  /**
    * If false, no warning for duplicate keys will be shown
    */
   ignoreKeyWarning?: boolean
@@ -115,7 +124,13 @@ export const AtomicState: React.FC<{
 }
 
 function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
-  const { effects = [], persist, localStoragePersistence } = init
+  const {
+    effects = [],
+    persist,
+    localStoragePersistence,
+    sync = true,
+    onSync = () => {},
+  } = init
 
   const persistence = localStoragePersistence || persist
 
@@ -198,11 +213,12 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   })
 
   useEffect(() => {
-    function storageListener() {
+    async function storageListener() {
       if (typeof localStorage !== "undefined") {
         if (typeof localStorage[`store-${init.name}`] !== "undefined") {
           try {
             const newState = JSON.parse(localStorage[`store-${init.name}`])
+            await onSync(newState)
             updateState(newState)
             // notify(init.name, hookCall, newState)
           } catch (err) {}
@@ -213,10 +229,12 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       if (typeof window !== "undefined") {
         const canListen = typeof window.addEventListener !== "undefined"
         if (canListen) {
-          window.addEventListener("storage", storageListener)
-          return () => {
-            if (typeof window !== "undefined") {
-              window.removeEventListener("storage", storageListener)
+          if (sync) {
+            window.addEventListener("storage", storageListener)
+            return () => {
+              if (typeof window !== "undefined") {
+                window.removeEventListener("storage", storageListener)
+              }
             }
           }
         }

@@ -82,7 +82,7 @@ var AtomicState = function (_a) {
 exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
-    var _a = init.effects, effects = _a === void 0 ? [] : _a, persist = init.persist, localStoragePersistence = init.localStoragePersistence;
+    var _a = init.effects, effects = _a === void 0 ? [] : _a, persist = init.persist, localStoragePersistence = init.localStoragePersistence, _b = init.sync, sync = _b === void 0 ? true : _b, _c = init.onSync, onSync = _c === void 0 ? function () { } : _c;
     var persistence = localStoragePersistence || persist;
     var hydration = true;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
@@ -143,7 +143,7 @@ function useAtomCreate(init) {
             return initVal;
         }
     })();
-    var _b = (0, react_1.useState)(function () {
+    var _d = (0, react_1.useState)(function () {
         try {
             if (hydration) {
                 return JSON.parse(localStorage["store-".concat(init.name)]);
@@ -154,50 +154,65 @@ function useAtomCreate(init) {
         catch (err) {
             return initialValue;
         }
-    }), vIfPersistence = _b[0], setVIfPersistence = _b[1];
+    }), vIfPersistence = _d[0], setVIfPersistence = _d[1];
     (0, react_1.useEffect)(function () {
         function storageListener() {
-            if (typeof localStorage !== "undefined") {
-                if (typeof localStorage["store-".concat(init.name)] !== "undefined") {
-                    try {
-                        var newState = JSON.parse(localStorage["store-".concat(init.name)]);
-                        updateState(newState);
-                        // notify(init.name, hookCall, newState)
+            return __awaiter(this, void 0, void 0, function () {
+                var newState, err_1;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (!(typeof localStorage !== "undefined")) return [3 /*break*/, 4];
+                            if (!(typeof localStorage["store-".concat(init.name)] !== "undefined")) return [3 /*break*/, 4];
+                            _a.label = 1;
+                        case 1:
+                            _a.trys.push([1, 3, , 4]);
+                            newState = JSON.parse(localStorage["store-".concat(init.name)]);
+                            return [4 /*yield*/, onSync(newState)];
+                        case 2:
+                            _a.sent();
+                            updateState(newState);
+                            return [3 /*break*/, 4];
+                        case 3:
+                            err_1 = _a.sent();
+                            return [3 /*break*/, 4];
+                        case 4: return [2 /*return*/];
                     }
-                    catch (err) { }
-                }
-            }
+                });
+            });
         }
         if (persistence) {
             if (typeof window !== "undefined") {
                 var canListen = typeof window.addEventListener !== "undefined";
                 if (canListen) {
-                    window.addEventListener("storage", storageListener);
-                    return function () {
-                        if (typeof window !== "undefined") {
-                            window.removeEventListener("storage", storageListener);
-                        }
-                    };
+                    if (sync) {
+                        window.addEventListener("storage", storageListener);
+                        return function () {
+                            if (typeof window !== "undefined") {
+                                window.removeEventListener("storage", storageListener);
+                            }
+                        };
+                    }
                 }
             }
         }
         return function () { };
     }, [init.name]);
-    var _c = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
+    var _e = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
         ? undefined
         : (function () {
             defaultAtomsValues[init.name] = initialValue;
             return initialValue;
-        })()), state = _c[0], setState = _c[1];
+        })()), state = _e[0], setState = _e[1];
     if (!pendingAtoms[init.name]) {
         pendingAtoms[init.name] = 0;
     }
     if (!atomEmitters[init.name]) {
         atomEmitters[init.name] = createEmitter();
     }
-    var _d = atomEmitters[init.name], emitter = _d.emitter, notify = _d.notify;
-    var _e = (0, react_1.useState)(false), runEffects = _e[0], setRunEffects = _e[1];
+    var _f = atomEmitters[init.name], emitter = _f.emitter, notify = _f.notify;
+    var _g = (0, react_1.useState)(false), runEffects = _g[0], setRunEffects = _g[1];
     var hydrated = (0, react_1.useRef)(false);
     var updateState = (0, react_1.useCallback)(function (v) { return __awaiter(_this, void 0, void 0, function () {
         var willCancel, newValue, _a, _loop_1, _i, effects_1, effect, tm_1;
@@ -694,4 +709,3 @@ function useStorageItem(k, def) {
     return value;
 }
 exports.useStorageItem = useStorageItem;
-//# sourceMappingURL=index.js.map
