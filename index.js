@@ -83,6 +83,7 @@ exports.AtomicState = AtomicState;
 function useAtomCreate(init) {
     var _this = this;
     var _a = init.effects, effects = _a === void 0 ? [] : _a, persist = init.persist, localStoragePersistence = init.localStoragePersistence, _b = init.sync, sync = _b === void 0 ? true : _b, _c = init.onSync, onSync = _c === void 0 ? function () { } : _c;
+    var _d = (0, react_1.useState)(false), isLSReady = _d[0], setIsLSReady = _d[1];
     var persistence = localStoragePersistence || persist;
     var hydration = true;
     var hookCall = (0, react_1.useMemo)(function () { return "".concat(Math.random()).split(".")[1]; }, []);
@@ -143,7 +144,7 @@ function useAtomCreate(init) {
             return initVal;
         }
     })();
-    var _d = (0, react_1.useState)(function () {
+    var _e = (0, react_1.useState)(function () {
         try {
             if (hydration) {
                 return JSON.parse(localStorage["store-".concat(init.name)]);
@@ -154,7 +155,7 @@ function useAtomCreate(init) {
         catch (err) {
             return initialValue;
         }
-    }), vIfPersistence = _d[0], setVIfPersistence = _d[1];
+    }), vIfPersistence = _e[0], setVIfPersistence = _e[1];
     (0, react_1.useEffect)(function () {
         function storageListener() {
             return __awaiter(this, void 0, void 0, function () {
@@ -198,21 +199,21 @@ function useAtomCreate(init) {
         }
         return function () { };
     }, [init.name]);
-    var _e = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
+    var _f = (0, react_1.useState)((initialValue instanceof Promise || typeof initialValue === "function") &&
         typeof defaultAtomsValues[init.name] === "undefined"
         ? undefined
         : (function () {
             defaultAtomsValues[init.name] = initialValue;
             return initialValue;
-        })()), state = _e[0], setState = _e[1];
+        })()), state = _f[0], setState = _f[1];
     if (!pendingAtoms[init.name]) {
         pendingAtoms[init.name] = 0;
     }
     if (!atomEmitters[init.name]) {
         atomEmitters[init.name] = createEmitter();
     }
-    var _f = atomEmitters[init.name], emitter = _f.emitter, notify = _f.notify;
-    var _g = (0, react_1.useState)(false), runEffects = _g[0], setRunEffects = _g[1];
+    var _g = atomEmitters[init.name], emitter = _g.emitter, notify = _g.notify;
+    var _h = (0, react_1.useState)(false), runEffects = _h[0], setRunEffects = _h[1];
     var hydrated = (0, react_1.useRef)(false);
     var updateState = (0, react_1.useCallback)(function (v) { return __awaiter(_this, void 0, void 0, function () {
         var willCancel, newValue, _a, _loop_1, _i, effects_1, effect, tm_1;
@@ -284,6 +285,7 @@ function useAtomCreate(init) {
             if (!hydrated.current) {
                 var tm1_1 = setTimeout(function () {
                     updateState(vIfPersistence);
+                    setIsLSReady(true);
                 }, 0);
                 var tm2_1 = setTimeout(function () {
                     setVIfPersistence(undefined);
@@ -363,7 +365,7 @@ function useAtomCreate(init) {
     }, [runEffects]);
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
-            if (persistence) {
+            if (persistence && isLSReady) {
                 localStorage.setItem("store-".concat(init.name), JSON.stringify(state));
             }
             else {

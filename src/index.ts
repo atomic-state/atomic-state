@@ -132,6 +132,8 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     onSync = () => {},
   } = init
 
+  const [isLSReady, setIsLSReady] = useState(false)
+
   const persistence = localStoragePersistence || persist
 
   const hydration = true
@@ -315,6 +317,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       if (!hydrated.current) {
         const tm1 = setTimeout(() => {
           updateState(vIfPersistence)
+          setIsLSReady(true)
         }, 0)
 
         const tm2 = setTimeout(() => {
@@ -391,7 +394,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
-      if (persistence) {
+      if (persistence && isLSReady) {
         localStorage.setItem(`store-${init.name}`, JSON.stringify(state))
       } else {
         if (typeof localStorage[`store-${init.name}`] !== "undefined") {
