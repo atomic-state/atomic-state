@@ -78,7 +78,7 @@ function createEmitter() {
   const emitter = new EventEmitter()
   emitter.setMaxListeners(10e12)
   function notify(storeName: string, hookCall: string, payload = {}) {
-    emitter.emit(storeName, { hookCall, payload })
+    emitter.emit(storeName, { storeName, hookCall, payload })
   }
   return {
     emitter,
@@ -477,17 +477,21 @@ export type Filter<T = any> = {
 const defaultFiltersValues: any = {}
 
 const objectFilters: any = {}
+const resolvedFilters: any = {}
 
 export function filter<R>(init: Filter<R | Promise<R>>) {
   const { name, get: get } = init
   const filterDeps: any = {}
+  const depsValues: any = {}
 
   const getObject = {
     get: (atom: any) => {
       if (typeof atom !== "function") {
         filterDeps[atom.name] = true
+        depsValues[atom.name] = defaultAtomsValues[atom.name]
       } else {
         filterDeps[atom["atom-name"]] = true
+        depsValues[atom["atom-name"]] = defaultAtomsValues[atom["atom-name"]]
       }
       return typeof atom !== "function"
         ? defaultAtomsValues[atom.name]
@@ -543,19 +547,26 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     }, [initialValue])
 
     function renderValue(e: any) {
-      const tm = setTimeout(() => {
-        const newValue = get(getObject)
-        if (newValue instanceof Promise) {
-          newValue.then((v) => {
+      if (
+        typeof e.payload === "function"
+          ? true
+          : JSON.stringify(depsValues[e.storeName]) !==
+            JSON.stringify(defaultAtomsValues[e.storeName])
+      ) {
+        const tm = setTimeout(() => {
+          const newValue = get(getObject)
+          if (newValue instanceof Promise) {
+            newValue.then((v) => {
+              defaultFiltersValues[`${name}`] = newValue
+              setFilterValue(v)
+            })
+          } else {
             defaultFiltersValues[`${name}`] = newValue
-            setFilterValue(v)
-          })
-        } else {
-          defaultFiltersValues[`${name}`] = newValue
-          setFilterValue(newValue)
-        }
-        clearTimeout(tm)
-      }, 0)
+            setFilterValue(newValue)
+          }
+          clearTimeout(tm)
+        }, 0)
+      }
     }
 
     useEffect(() => {
