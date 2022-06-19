@@ -51,7 +51,7 @@ function createEmitter() {
     emitter.setMaxListeners(10e12);
     function notify(storeName, hookCall, payload) {
         if (payload === void 0) { payload = {}; }
-        emitter.emit(storeName, { hookCall: hookCall, payload: payload });
+        emitter.emit(storeName, { storeName: storeName, hookCall: hookCall, payload: payload });
     }
     return {
         emitter: emitter,
@@ -416,16 +416,20 @@ exports.atom = atom;
 exports.createAtom = atom;
 var defaultFiltersValues = {};
 var objectFilters = {};
+var resolvedFilters = {};
 function filter(init) {
     var name = init.name, get = init.get;
     var filterDeps = {};
+    var depsValues = {};
     var getObject = {
         get: function (atom) {
             if (typeof atom !== "function") {
                 filterDeps[atom.name] = true;
+                depsValues[atom.name] = defaultAtomsValues[atom.name];
             }
             else {
                 filterDeps[atom["atom-name"]] = true;
+                depsValues[atom["atom-name"]] = defaultAtomsValues[atom["atom-name"]];
             }
             return typeof atom !== "function"
                 ? defaultAtomsValues[atom.name]
@@ -475,20 +479,25 @@ function filter(init) {
             }
         }, [initialValue]);
         function renderValue(e) {
-            var tm = setTimeout(function () {
-                var newValue = get(getObject);
-                if (newValue instanceof Promise) {
-                    newValue.then(function (v) {
+            if (typeof e.payload === "function"
+                ? true
+                : JSON.stringify(depsValues[e.storeName]) !==
+                    JSON.stringify(defaultAtomsValues[e.storeName])) {
+                var tm_3 = setTimeout(function () {
+                    var newValue = get(getObject);
+                    if (newValue instanceof Promise) {
+                        newValue.then(function (v) {
+                            defaultFiltersValues["".concat(name)] = newValue;
+                            setFilterValue(v);
+                        });
+                    }
+                    else {
                         defaultFiltersValues["".concat(name)] = newValue;
-                        setFilterValue(v);
-                    });
-                }
-                else {
-                    defaultFiltersValues["".concat(name)] = newValue;
-                    setFilterValue(newValue);
-                }
-                clearTimeout(tm);
-            }, 0);
+                        setFilterValue(newValue);
+                    }
+                    clearTimeout(tm_3);
+                }, 0);
+            }
         }
         (0, react_1.useEffect)(function () {
             // This renders the initial value of the filter if it was set
