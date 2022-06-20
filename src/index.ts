@@ -73,14 +73,14 @@ type ActionsObjectType<ArgsTypes = any> = {
 const atomEmitters: {
   [key: string]: {
     emitter: EventEmitter
-    notify: (storeName: string, hookCall: string, payload?: {}) => void
+    notify: (storeName: string, hookCall: string, payload?: any) => void
   }
 } = {}
 
 function createEmitter() {
   const emitter = new EventEmitter()
   emitter.setMaxListeners(10e12)
-  function notify(storeName: string, hookCall: string, payload = {}) {
+  function notify(storeName: string, hookCall: string, payload: any) {
     emitter.emit(storeName, { storeName, hookCall, payload })
   }
   return {

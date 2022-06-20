@@ -51,7 +51,6 @@ function createEmitter() {
     var emitter = new events_1.EventEmitter();
     emitter.setMaxListeners(10e12);
     function notify(storeName, hookCall, payload) {
-        if (payload === void 0) { payload = {}; }
         emitter.emit(storeName, { storeName: storeName, hookCall: hookCall, payload: payload });
     }
     return {
