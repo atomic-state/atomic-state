@@ -45,6 +45,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.useStorageItem = exports.storage = exports.useStorage = exports.useAtomActions = exports.useActions = exports.useAtomDispatch = exports.useDispatch = exports.useAtomValue = exports.useValue = exports.useAtom = exports.useFilter = exports.filter = exports.createAtom = exports.atom = exports.AtomicState = void 0;
 var events_1 = require("events");
 var react_1 = require("react");
+var is18 = parseInt(react_1.version.split(".")[0]) >= 18;
 var atomEmitters = {};
 function createEmitter() {
     var emitter = new events_1.EventEmitter();
@@ -163,21 +164,24 @@ function useAtomCreate(init) {
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            if (!(typeof localStorage !== "undefined")) return [3 /*break*/, 4];
-                            if (!(typeof localStorage["store-".concat(init.name)] !== "undefined")) return [3 /*break*/, 4];
+                            if (!(typeof localStorage !== "undefined")) return [3 /*break*/, 5];
+                            if (!(typeof localStorage["store-".concat(init.name)] !== "undefined")) return [3 /*break*/, 5];
                             _a.label = 1;
                         case 1:
-                            _a.trys.push([1, 3, , 4]);
+                            _a.trys.push([1, 4, , 5]);
+                            if (!(localStorage["store-".concat(init.name)] !==
+                                JSON.stringify(defaultAtomsValues[init.name]))) return [3 /*break*/, 3];
                             newState = JSON.parse(localStorage["store-".concat(init.name)]);
+                            updateState(newState);
                             return [4 /*yield*/, onSync(newState)];
                         case 2:
                             _a.sent();
-                            updateState(newState);
-                            return [3 /*break*/, 4];
-                        case 3:
+                            _a.label = 3;
+                        case 3: return [3 /*break*/, 5];
+                        case 4:
                             err_1 = _a.sent();
-                            return [3 /*break*/, 4];
-                        case 4: return [2 /*return*/];
+                            return [3 /*break*/, 5];
+                        case 5: return [2 /*return*/];
                     }
                 });
             });
@@ -189,9 +193,7 @@ function useAtomCreate(init) {
                     if (sync) {
                         window.addEventListener("storage", storageListener);
                         return function () {
-                            if (typeof window !== "undefined") {
-                                window.removeEventListener("storage", storageListener);
-                            }
+                            window.removeEventListener("storage", storageListener);
                         };
                     }
                 }
@@ -267,14 +269,21 @@ function useAtomCreate(init) {
                         setRunEffects(true);
                     }
                     finally {
-                        tm_1 = setTimeout(function () {
-                            if (!willCancel) {
+                        if (!willCancel) {
+                            if (is18) {
                                 notify(init.name, hookCall, newValue);
                                 // Finally update state
                                 setState(newValue);
-                                clearTimeout(tm_1);
                             }
-                        }, 0);
+                            else {
+                                tm_1 = setTimeout(function () {
+                                    notify(init.name, hookCall, newValue);
+                                    // Finally update state
+                                    setState(newValue);
+                                    clearTimeout(tm_1);
+                                }, 0);
+                            }
+                        }
                     }
                     return [2 /*return*/];
             }
@@ -366,7 +375,9 @@ function useAtomCreate(init) {
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
             if (persistence && isLSReady) {
-                localStorage.setItem("store-".concat(init.name), JSON.stringify(state));
+                if (localStorage["store-".concat(init.name)] !== defaultAtomsValues[init.name]) {
+                    localStorage.setItem("store-".concat(init.name), JSON.stringify(state));
+                }
             }
             else {
                 if (typeof localStorage["store-".concat(init.name)] !== "undefined") {
