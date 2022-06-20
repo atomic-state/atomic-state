@@ -372,7 +372,7 @@ function useAtomCreate(init) {
             var windowExists = typeof window !== "undefined";
             // For react native
             var isBrowserEnv = windowExists && "addEventListener" in window;
-            if (persistence && isBrowserEnv ? isLSReady : true) {
+            if (persistence && (isBrowserEnv ? isLSReady : true)) {
                 if (localStorage["store-".concat(init.name)] !== defaultAtomsValues[init.name]) {
                     localStorage.setItem("store-".concat(init.name), JSON.stringify(state));
                 }
@@ -446,6 +446,7 @@ function filter(init) {
         },
     };
     var useFilterGet = function () {
+        var rendered = (0, react_1.useRef)(false);
         function getInitialValue() {
             try {
                 return defaultFiltersValues["".concat(name)];
@@ -482,25 +483,35 @@ function filter(init) {
             }
         }, [initialValue]);
         function renderValue(e) {
-            if (typeof e.payload === "function"
-                ? true
-                : JSON.stringify(depsValues[e.storeName]) !==
-                    JSON.stringify(defaultAtomsValues[e.storeName])) {
-                var tm_3 = setTimeout(function () {
-                    var newValue = get(getObject);
-                    if (newValue instanceof Promise) {
-                        newValue.then(function (v) {
+            return __awaiter(this, void 0, void 0, function () {
+                var newValue, err_3;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (!(typeof e.payload === "function"
+                                ? true
+                                : JSON.stringify(depsValues[e.storeName]) !==
+                                    JSON.stringify(defaultAtomsValues[e.storeName]) ||
+                                    !rendered.current)) return [3 /*break*/, 5];
+                            _a.label = 1;
+                        case 1:
+                            _a.trys.push([1, 3, 4, 5]);
+                            return [4 /*yield*/, get(getObject)];
+                        case 2:
+                            newValue = _a.sent();
                             defaultFiltersValues["".concat(name)] = newValue;
-                            setFilterValue(v);
-                        });
+                            setFilterValue(newValue);
+                            return [3 /*break*/, 5];
+                        case 3:
+                            err_3 = _a.sent();
+                            return [3 /*break*/, 5];
+                        case 4:
+                            rendered.current = true;
+                            return [7 /*endfinally*/];
+                        case 5: return [2 /*return*/];
                     }
-                    else {
-                        defaultFiltersValues["".concat(name)] = newValue;
-                        setFilterValue(newValue);
-                    }
-                    clearTimeout(tm_3);
-                }, 0);
-            }
+                });
+            });
         }
         (0, react_1.useEffect)(function () {
             // This renders the initial value of the filter if it was set

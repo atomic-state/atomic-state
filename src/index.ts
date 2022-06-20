@@ -413,7 +413,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       // For react native
       const isBrowserEnv = windowExists && "addEventListener" in window
 
-      if (persistence && isBrowserEnv ? isLSReady : true) {
+      if (persistence && (isBrowserEnv ? isLSReady : true)) {
         if (
           localStorage[`store-${init.name}`] !== defaultAtomsValues[init.name]
         ) {
@@ -523,6 +523,8 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
   }
 
   const useFilterGet = () => {
+    const rendered = useRef(false)
+
     function getInitialValue() {
       try {
         return defaultFiltersValues[`${name}`]
@@ -563,26 +565,22 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       }
     }, [initialValue])
 
-    function renderValue(e: any) {
+    async function renderValue(e: any) {
       if (
         typeof e.payload === "function"
           ? true
           : JSON.stringify(depsValues[e.storeName]) !==
-            JSON.stringify(defaultAtomsValues[e.storeName])
+              JSON.stringify(defaultAtomsValues[e.storeName]) ||
+            !rendered.current
       ) {
-        const tm = setTimeout(() => {
-          const newValue = get(getObject)
-          if (newValue instanceof Promise) {
-            newValue.then((v) => {
-              defaultFiltersValues[`${name}`] = newValue
-              setFilterValue(v)
-            })
-          } else {
-            defaultFiltersValues[`${name}`] = newValue
-            setFilterValue(newValue)
-          }
-          clearTimeout(tm)
-        }, 0)
+        try {
+          const newValue = await get(getObject)
+          defaultFiltersValues[`${name}`] = newValue
+          setFilterValue(newValue)
+        } catch (err) {
+        } finally {
+          rendered.current = true
+        }
       }
     }
 
