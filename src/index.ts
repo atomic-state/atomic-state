@@ -291,20 +291,17 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       try {
         if (runEffects || hydrated.current) {
           for (let effect of effects) {
-            const tm = setTimeout(async () => {
-              const cancelStateUpdate = (await effect({
-                previous: state,
-                state: newValue,
-                dispatch: updateState,
-              })) as unknown as boolean
-              if (
-                typeof cancelStateUpdate !== "undefined" &&
-                !cancelStateUpdate
-              ) {
-                willCancel = true
-              }
-              clearTimeout(tm)
-            }, 0)
+            const cancelStateUpdate = (await effect({
+              previous: state,
+              state: newValue,
+              dispatch: updateState,
+            })) as unknown as boolean
+            if (
+              typeof cancelStateUpdate !== "undefined" &&
+              !cancelStateUpdate
+            ) {
+              willCancel = true
+            }
           }
         }
       } catch (err) {
