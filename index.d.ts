@@ -90,7 +90,7 @@ export declare type Filter<T = any> = {
 };
 export declare function filter<R>(init: Filter<R | Promise<R>>): {
     (): R;
-    "filter-name": string | undefined;
+    "filter-name": string;
     "init-object": Filter<R | Promise<R>>;
 };
 export declare function useFilter<T>(f: (() => T | Promise<T>) | Filter<T | Promise<T>>): T;
