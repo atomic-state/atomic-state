@@ -426,10 +426,19 @@ exports.createAtom = atom;
 var defaultFiltersValues = {};
 var objectFilters = {};
 var resolvedFilters = {};
+var filterEmitters = {};
+var subscribedFilters = {};
 function filter(init) {
-    var name = init.name, get = init.get;
+    var _a = init.name, name = _a === void 0 ? "" : _a, get = init.get;
     var filterDeps = {};
     var depsValues = {};
+    if (!filterEmitters[name]) {
+        filterEmitters[name] = createEmitter();
+    }
+    var filterEmitter = filterEmitters[name];
+    function notifyOtherFilters(hookCall, payload) {
+        filterEmitter.notify(name, hookCall, payload);
+    }
     var getObject = {
         get: function (atom) {
             if (typeof atom !== "function") {
@@ -446,10 +455,13 @@ function filter(init) {
         },
     };
     var useFilterGet = function () {
-        var rendered = (0, react_1.useRef)(false);
+        var hookCall = (0, react_1.useMemo)(function () { return Math.random(); }, []);
         function getInitialValue() {
             try {
-                return defaultFiltersValues["".concat(name)];
+                resolvedFilters["".concat(name)] = true;
+                return typeof defaultFiltersValues["".concat(name)] === "undefined"
+                    ? init.default
+                    : defaultFiltersValues["".concat(name)];
             }
             catch (err) {
                 return init.default;
@@ -457,16 +469,22 @@ function filter(init) {
         }
         var initialValue = getInitialValue();
         (0, react_1.useEffect)(function () {
+            var _a;
             // Whenever the filter object / function changes, add atoms deps again
-            get(getObject);
-        }, [init]);
-        (0, react_1.useEffect)(function () {
-            // Only render when using top `AtomicState` to set default filter value
-            // This prevents rendering the filter twice in the first render
-            if (defaultFiltersInAtomic["".concat(name)]) {
+            if (!subscribedFilters[name]) {
+                subscribedFilters[name] = true;
                 get(getObject);
+                for (var dep in filterDeps) {
+                    (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.addListener(dep, renderValue);
+                }
+                return function () {
+                    var _a;
+                    for (var dep in filterDeps) {
+                        (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.removeListener(dep, renderValue);
+                    }
+                };
             }
-        }, []);
+        }, [init]);
         var _a = (0, react_1.useState)(initialValue instanceof Promise || typeof initialValue === "undefined"
             ? undefined
             : (function () {
@@ -484,55 +502,62 @@ function filter(init) {
         }, [initialValue]);
         function renderValue(e) {
             return __awaiter(this, void 0, void 0, function () {
-                var newValue, err_3;
+                var newValue_1, tm_3, err_3;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            if (!(typeof e.payload === "function"
-                                ? true
-                                : JSON.stringify(depsValues[e.storeName]) !==
-                                    JSON.stringify(defaultAtomsValues[e.storeName]) ||
-                                    !rendered.current)) return [3 /*break*/, 5];
+                            console.log(e);
+                            depsValues[e.storeName] = e.payload;
                             _a.label = 1;
                         case 1:
-                            _a.trys.push([1, 3, 4, 5]);
+                            _a.trys.push([1, 3, , 4]);
                             return [4 /*yield*/, get(getObject)];
                         case 2:
-                            newValue = _a.sent();
-                            defaultFiltersValues["".concat(name)] = newValue;
-                            setFilterValue(newValue);
-                            return [3 /*break*/, 5];
+                            newValue_1 = _a.sent();
+                            defaultFiltersValues["".concat(name)] = newValue_1;
+                            if (is18) {
+                                setFilterValue(newValue_1);
+                            }
+                            else {
+                                tm_3 = setTimeout(function () {
+                                    setFilterValue(newValue_1);
+                                    clearTimeout(tm_3);
+                                }, 0);
+                            }
+                            return [3 /*break*/, 4];
                         case 3:
                             err_3 = _a.sent();
-                            return [3 /*break*/, 5];
-                        case 4:
-                            rendered.current = true;
-                            return [7 /*endfinally*/];
-                        case 5: return [2 /*return*/];
+                            return [3 /*break*/, 4];
+                        case 4: return [2 /*return*/];
                     }
                 });
             });
         }
+        function updateValueFromEvent(e) {
+            return __awaiter(this, void 0, void 0, function () {
+                var storeName, payload;
+                return __generator(this, function (_a) {
+                    storeName = e.storeName, payload = e.payload;
+                    if (hookCall !== storeName.hookCall) {
+                        setFilterValue(payload);
+                    }
+                    return [2 /*return*/];
+                });
+            });
+        }
         (0, react_1.useEffect)(function () {
-            // This renders the initial value of the filter if it was set
-            // using the `AtomicState` component
-            if (defaultFiltersInAtomic["".concat(name)]) {
-                defaultFiltersInAtomic["".concat(name)] = false;
-                renderValue({});
-            }
-        }, []);
+            notifyOtherFilters(hookCall, filterValue);
+        }, [filterValue]);
         (0, react_1.useEffect)(function () {
             var _a;
-            for (var dep in filterDeps) {
-                (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.addListener(dep, renderValue);
-            }
+            (_a = filterEmitter.emitter) === null || _a === void 0 ? void 0 : _a.addListener(name, updateValueFromEvent);
             return function () {
                 var _a;
-                for (var dep in filterDeps) {
-                    (_a = atomEmitters[dep]) === null || _a === void 0 ? void 0 : _a.emitter.removeListener(dep, renderValue);
-                }
+                subscribedFilters[name] = false;
+                resolvedFilters[name] = false;
+                (_a = filterEmitter === null || filterEmitter === void 0 ? void 0 : filterEmitter.emitter) === null || _a === void 0 ? void 0 : _a.removeListener(name, updateValueFromEvent);
             };
-        }, []);
+        }, [init]);
         return filterValue;
     };
     useFilterGet["filter-name"] = name;

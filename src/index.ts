@@ -502,10 +502,29 @@ const defaultFiltersValues: any = {}
 const objectFilters: any = {}
 const resolvedFilters: any = {}
 
+const filterEmitters: {
+  [key: string]: {
+    emitter: EventEmitter
+    notify: (storeName: string, hookCall: string, payload?: {}) => void
+  }
+} = {}
+
+const subscribedFilters: any = {}
+
 export function filter<R>(init: Filter<R | Promise<R>>) {
-  const { name, get: get } = init
+  const { name = "", get: get } = init
   const filterDeps: any = {}
   const depsValues: any = {}
+
+  if (!filterEmitters[name]) {
+    filterEmitters[name] = createEmitter()
+  }
+
+  const filterEmitter = filterEmitters[name]
+
+  function notifyOtherFilters(hookCall: any, payload: any) {
+    filterEmitter.notify(name, hookCall, payload)
+  }
 
   const getObject = {
     get: (atom: any) => {
@@ -523,29 +542,36 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
   }
 
   const useFilterGet = () => {
-    const rendered = useRef(false)
+    const hookCall = useMemo(() => Math.random(), [])
 
     function getInitialValue() {
       try {
-        return defaultFiltersValues[`${name}`]
+        resolvedFilters[`${name}`] = true
+        return typeof defaultFiltersValues[`${name}`] === "undefined"
+          ? init.default
+          : defaultFiltersValues[`${name}`]
       } catch (err) {
         return init.default
       }
     }
+
     const initialValue = getInitialValue()
 
     useEffect(() => {
       // Whenever the filter object / function changes, add atoms deps again
-      get(getObject)
-    }, [init])
-
-    useEffect(() => {
-      // Only render when using top `AtomicState` to set default filter value
-      // This prevents rendering the filter twice in the first render
-      if (defaultFiltersInAtomic[`${name}`]) {
+      if (!subscribedFilters[name]) {
+        subscribedFilters[name] = true
         get(getObject)
+        for (let dep in filterDeps) {
+          atomEmitters[dep]?.emitter.addListener(dep, renderValue)
+        }
+        return () => {
+          for (let dep in filterDeps) {
+            atomEmitters[dep]?.emitter.removeListener(dep, renderValue)
+          }
+        }
       }
-    }, [])
+    }, [init])
 
     const [filterValue, setFilterValue] = useState<R>(
       initialValue instanceof Promise || typeof initialValue === "undefined"
@@ -566,43 +592,41 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     }, [initialValue])
 
     async function renderValue(e: any) {
-      if (
-        typeof e.payload === "function"
-          ? true
-          : JSON.stringify(depsValues[e.storeName]) !==
-              JSON.stringify(defaultAtomsValues[e.storeName]) ||
-            !rendered.current
-      ) {
-        try {
-          const newValue = await get(getObject)
-          defaultFiltersValues[`${name}`] = newValue
+      console.log(e)
+      depsValues[e.storeName] = e.payload
+      try {
+        const newValue = await get(getObject)
+        defaultFiltersValues[`${name}`] = newValue
+        if (is18) {
           setFilterValue(newValue)
-        } catch (err) {
-        } finally {
-          rendered.current = true
+        } else {
+          const tm = setTimeout(() => {
+            setFilterValue(newValue)
+            clearTimeout(tm)
+          }, 0)
         }
+      } catch (err) {}
+    }
+
+    async function updateValueFromEvent(e: any) {
+      const { storeName, payload } = e
+      if (hookCall !== storeName.hookCall) {
+        setFilterValue(payload)
       }
     }
 
     useEffect(() => {
-      // This renders the initial value of the filter if it was set
-      // using the `AtomicState` component
-      if (defaultFiltersInAtomic[`${name}`]) {
-        defaultFiltersInAtomic[`${name}`] = false
-        renderValue({})
-      }
-    }, [])
+      notifyOtherFilters(hookCall, filterValue)
+    }, [filterValue])
 
     useEffect(() => {
-      for (let dep in filterDeps) {
-        atomEmitters[dep]?.emitter.addListener(dep, renderValue)
-      }
+      filterEmitter.emitter?.addListener(name, updateValueFromEvent)
       return () => {
-        for (let dep in filterDeps) {
-          atomEmitters[dep]?.emitter.removeListener(dep, renderValue)
-        }
+        subscribedFilters[name] = false
+        resolvedFilters[name] = false
+        filterEmitter?.emitter?.removeListener(name, updateValueFromEvent)
       }
-    }, [])
+    }, [init])
 
     return filterValue
   }
