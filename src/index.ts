@@ -408,7 +408,12 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
-      if (persistence && isLSReady) {
+      const windowExists = typeof window !== "undefined"
+
+      // For react native
+      const isBrowserEnv = windowExists && "addEventListener" in window
+
+      if (persistence && isBrowserEnv ? isLSReady : true) {
         if (
           localStorage[`store-${init.name}`] !== defaultAtomsValues[init.name]
         ) {
@@ -520,13 +525,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
   const useFilterGet = () => {
     function getInitialValue() {
       try {
-        return typeof defaultFiltersValues[`${name}`] === "undefined"
-          ? (() => {
-              return get(getObject)
-            })()
-          : (() => {
-              return defaultFiltersValues[`${name}`]
-            })()
+        return defaultFiltersValues[`${name}`]
       } catch (err) {
         return init.default
       }
