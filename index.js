@@ -369,7 +369,10 @@ function useAtomCreate(init) {
     }, [runEffects]);
     (0, react_1.useEffect)(function () {
         if (typeof localStorage !== "undefined") {
-            if (persistence && isLSReady) {
+            var windowExists = typeof window !== "undefined";
+            // For react native
+            var isBrowserEnv = windowExists && "addEventListener" in window;
+            if (persistence && isBrowserEnv ? isLSReady : true) {
                 if (localStorage["store-".concat(init.name)] !== defaultAtomsValues[init.name]) {
                     localStorage.setItem("store-".concat(init.name), JSON.stringify(state));
                 }
@@ -445,13 +448,7 @@ function filter(init) {
     var useFilterGet = function () {
         function getInitialValue() {
             try {
-                return typeof defaultFiltersValues["".concat(name)] === "undefined"
-                    ? (function () {
-                        return get(getObject);
-                    })()
-                    : (function () {
-                        return defaultFiltersValues["".concat(name)];
-                    })();
+                return defaultFiltersValues["".concat(name)];
             }
             catch (err) {
                 return init.default;
