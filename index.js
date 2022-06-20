@@ -506,7 +506,6 @@ function filter(init) {
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0:
-                            console.log(e);
                             depsValues[e.storeName] = e.payload;
                             _a.label = 1;
                         case 1:
