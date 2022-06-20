@@ -15,7 +15,10 @@ import React, {
   useMemo,
   useRef,
   useState,
+  version,
 } from "react"
+
+const is18 = parseInt(version.split(".")[0]) >= 18
 
 /**
  * Atom type
@@ -219,9 +222,19 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       if (typeof localStorage !== "undefined") {
         if (typeof localStorage[`store-${init.name}`] !== "undefined") {
           try {
-            const newState = JSON.parse(localStorage[`store-${init.name}`])
-            await onSync(newState)
-            updateState(newState)
+            /**
+             * We compare our atom saved in the storage with the current
+             * atom value and only update our state if they are different
+             *
+             **/
+            if (
+              localStorage[`store-${init.name}`] !==
+              JSON.stringify(defaultAtomsValues[init.name])
+            ) {
+              const newState = JSON.parse(localStorage[`store-${init.name}`])
+              updateState(newState)
+              await onSync(newState)
+            }
             // notify(init.name, hookCall, newState)
           } catch (err) {}
         }
@@ -234,9 +247,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           if (sync) {
             window.addEventListener("storage", storageListener)
             return () => {
-              if (typeof window !== "undefined") {
-                window.removeEventListener("storage", storageListener)
-              }
+              window.removeEventListener("storage", storageListener)
             }
           }
         }
@@ -299,14 +310,20 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       } catch (err) {
         setRunEffects(true)
       } finally {
-        const tm = setTimeout(() => {
-          if (!willCancel) {
+        if (!willCancel) {
+          if (is18) {
             notify(init.name, hookCall, newValue)
             // Finally update state
             setState(newValue)
-            clearTimeout(tm)
+          } else {
+            const tm = setTimeout(() => {
+              notify(init.name, hookCall, newValue)
+              // Finally update state
+              setState(newValue)
+              clearTimeout(tm)
+            }, 0)
           }
-        }, 0)
+        }
       }
     },
     [hookCall, notify, runEffects, hydrated, state, init.name]
@@ -395,7 +412,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   useEffect(() => {
     if (typeof localStorage !== "undefined") {
       if (persistence && isLSReady) {
-        localStorage.setItem(`store-${init.name}`, JSON.stringify(state))
+        if (
+          localStorage[`store-${init.name}`] !== defaultAtomsValues[init.name]
+        ) {
+          localStorage.setItem(`store-${init.name}`, JSON.stringify(state))
+        }
       } else {
         if (typeof localStorage[`store-${init.name}`] !== "undefined") {
           localStorage.removeItem(`store-${init.name}`)
