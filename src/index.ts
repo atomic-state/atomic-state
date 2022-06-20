@@ -592,7 +592,6 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     }, [initialValue])
 
     async function renderValue(e: any) {
-      console.log(e)
       depsValues[e.storeName] = e.payload
       try {
         const newValue = await get(getObject)
