@@ -218,8 +218,7 @@ function useAtomCreate(init) {
     var _h = (0, react_1.useState)(false), runEffects = _h[0], setRunEffects = _h[1];
     var hydrated = (0, react_1.useRef)(false);
     var updateState = (0, react_1.useCallback)(function (v) { return __awaiter(_this, void 0, void 0, function () {
-        var willCancel, newValue, _a, _loop_1, _i, effects_1, effect, tm_1;
-        var _this = this;
+        var willCancel, newValue, _a, _i, effects_1, effect, cancelStateUpdate, err_2, tm_1;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -235,57 +234,53 @@ function useAtomCreate(init) {
                 case 3:
                     newValue = _a;
                     defaultAtomsValues[init.name] = newValue;
-                    try {
-                        if (runEffects || hydrated.current) {
-                            _loop_1 = function (effect) {
-                                var tm = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
-                                    var cancelStateUpdate;
-                                    return __generator(this, function (_a) {
-                                        switch (_a.label) {
-                                            case 0: return [4 /*yield*/, effect({
-                                                    previous: state,
-                                                    state: newValue,
-                                                    dispatch: updateState,
-                                                })];
-                                            case 1:
-                                                cancelStateUpdate = (_a.sent());
-                                                if (typeof cancelStateUpdate !== "undefined" &&
-                                                    !cancelStateUpdate) {
-                                                    willCancel = true;
-                                                }
-                                                clearTimeout(tm);
-                                                return [2 /*return*/];
-                                        }
-                                    });
-                                }); }, 0);
-                            };
-                            for (_i = 0, effects_1 = effects; _i < effects_1.length; _i++) {
-                                effect = effects_1[_i];
-                                _loop_1(effect);
-                            }
+                    _b.label = 4;
+                case 4:
+                    _b.trys.push([4, 9, 10, 11]);
+                    if (!(runEffects || hydrated.current)) return [3 /*break*/, 8];
+                    _i = 0, effects_1 = effects;
+                    _b.label = 5;
+                case 5:
+                    if (!(_i < effects_1.length)) return [3 /*break*/, 8];
+                    effect = effects_1[_i];
+                    return [4 /*yield*/, effect({
+                            previous: state,
+                            state: newValue,
+                            dispatch: updateState,
+                        })];
+                case 6:
+                    cancelStateUpdate = (_b.sent());
+                    if (typeof cancelStateUpdate !== "undefined" &&
+                        !cancelStateUpdate) {
+                        willCancel = true;
+                    }
+                    _b.label = 7;
+                case 7:
+                    _i++;
+                    return [3 /*break*/, 5];
+                case 8: return [3 /*break*/, 11];
+                case 9:
+                    err_2 = _b.sent();
+                    setRunEffects(true);
+                    return [3 /*break*/, 11];
+                case 10:
+                    if (!willCancel) {
+                        if (is18) {
+                            notify(init.name, hookCall, newValue);
+                            // Finally update state
+                            setState(newValue);
                         }
-                    }
-                    catch (err) {
-                        setRunEffects(true);
-                    }
-                    finally {
-                        if (!willCancel) {
-                            if (is18) {
+                        else {
+                            tm_1 = setTimeout(function () {
                                 notify(init.name, hookCall, newValue);
                                 // Finally update state
                                 setState(newValue);
-                            }
-                            else {
-                                tm_1 = setTimeout(function () {
-                                    notify(init.name, hookCall, newValue);
-                                    // Finally update state
-                                    setState(newValue);
-                                    clearTimeout(tm_1);
-                                }, 0);
-                            }
+                                clearTimeout(tm_1);
+                            }, 0);
                         }
                     }
-                    return [2 /*return*/];
+                    return [7 /*endfinally*/];
+                case 11: return [2 /*return*/];
             }
         });
     }); }, [hookCall, notify, runEffects, hydrated, state, init.name]);
