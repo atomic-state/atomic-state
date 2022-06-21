@@ -126,6 +126,8 @@ export const AtomicState: React.FC<{
   return children
 }
 
+const resolvedAtoms: any = {}
+
 function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const {
     effects = [],
@@ -294,8 +296,28 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           return true
         }
       })()
+
+      const notifyIfValueIsDefault = await (async () => {
+        try {
+          if (typeof defaultAtomsValues[init.name] === "function") {
+            return true
+          }
+          if (
+            JSON.stringify(newValue) === JSON.stringify(init.default) &&
+            !resolvedAtoms[init.name]
+          ) {
+            resolvedAtoms[init.name] = true
+            return true
+          }
+        } catch (err) {
+          return true
+        }
+      })()
+
       const shouldNotifyOtherSubscribers =
-        typeof defaultAtomsValues[init.name] === "function" ? true : hasChanded
+        typeof defaultAtomsValues[init.name] === "function"
+          ? true
+          : hasChanded || notifyIfValueIsDefault
 
       defaultAtomsValues[init.name] = newValue
 
