@@ -80,6 +80,7 @@ var AtomicState = function (_a) {
     return children;
 };
 exports.AtomicState = AtomicState;
+var resolvedAtoms = {};
 function useAtomCreate(init) {
     var _this = this;
     var _a = init.effects, effects = _a === void 0 ? [] : _a, persist = init.persist, localStoragePersistence = init.localStoragePersistence, _b = init.sync, sync = _b === void 0 ? true : _b, _c = init.onSync, onSync = _c === void 0 ? function () { } : _c;
@@ -217,7 +218,7 @@ function useAtomCreate(init) {
     var _h = (0, react_1.useState)(false), runEffects = _h[0], setRunEffects = _h[1];
     var hydrated = (0, react_1.useRef)(false);
     var updateState = (0, react_1.useCallback)(function (v) { return __awaiter(_this, void 0, void 0, function () {
-        var willCancel, newValue, _a, hasChanded, shouldNotifyOtherSubscribers, _i, effects_1, effect, cancelStateUpdate, err_2, tm_1;
+        var willCancel, newValue, _a, hasChanded, notifyIfValueIsDefault, shouldNotifyOtherSubscribers, _i, effects_1, effect, cancelStateUpdate, err_2, tm_1;
         var _this = this;
         return __generator(this, function (_b) {
             switch (_b.label) {
@@ -247,38 +248,60 @@ function useAtomCreate(init) {
                         }); })()];
                 case 4:
                     hasChanded = _b.sent();
-                    shouldNotifyOtherSubscribers = typeof defaultAtomsValues[init.name] === "function" ? true : hasChanded;
-                    defaultAtomsValues[init.name] = newValue;
-                    _b.label = 5;
+                    return [4 /*yield*/, (function () { return __awaiter(_this, void 0, void 0, function () {
+                            return __generator(this, function (_a) {
+                                try {
+                                    if (typeof defaultAtomsValues[init.name] === "function") {
+                                        return [2 /*return*/, true];
+                                    }
+                                    if (JSON.stringify(newValue) === JSON.stringify(init.default) &&
+                                        !resolvedAtoms[init.name]) {
+                                        resolvedAtoms[init.name] = true;
+                                        return [2 /*return*/, true];
+                                    }
+                                }
+                                catch (err) {
+                                    return [2 /*return*/, true];
+                                }
+                                return [2 /*return*/];
+                            });
+                        }); })()];
                 case 5:
-                    _b.trys.push([5, 10, 11, 12]);
-                    if (!(runEffects || hydrated.current)) return [3 /*break*/, 9];
-                    _i = 0, effects_1 = effects;
+                    notifyIfValueIsDefault = _b.sent();
+                    shouldNotifyOtherSubscribers = typeof defaultAtomsValues[init.name] === "function"
+                        ? true
+                        : hasChanded || notifyIfValueIsDefault;
+                    defaultAtomsValues[init.name] = newValue;
                     _b.label = 6;
                 case 6:
-                    if (!(_i < effects_1.length)) return [3 /*break*/, 9];
+                    _b.trys.push([6, 11, 12, 13]);
+                    if (!(runEffects || hydrated.current)) return [3 /*break*/, 10];
+                    _i = 0, effects_1 = effects;
+                    _b.label = 7;
+                case 7:
+                    if (!(_i < effects_1.length)) return [3 /*break*/, 10];
                     effect = effects_1[_i];
                     return [4 /*yield*/, effect({
                             previous: state,
                             state: newValue,
                             dispatch: updateState,
                         })];
-                case 7:
+                case 8:
                     cancelStateUpdate = (_b.sent());
                     if (typeof cancelStateUpdate !== "undefined" &&
                         !cancelStateUpdate) {
                         willCancel = true;
                     }
-                    _b.label = 8;
-                case 8:
+                    _b.label = 9;
+                case 9:
                     _i++;
-                    return [3 /*break*/, 6];
-                case 9: return [3 /*break*/, 12];
-                case 10:
+                    return [3 /*break*/, 7];
+                case 10: return [3 /*break*/, 13];
+                case 11:
                     err_2 = _b.sent();
                     setRunEffects(true);
-                    return [3 /*break*/, 12];
-                case 11:
+                    return [3 /*break*/, 13];
+                case 12:
                     if (!willCancel) {
                         if (is18) {
                             if (shouldNotifyOtherSubscribers) {
@@ -299,7 +322,7 @@ function useAtomCreate(init) {
                         }
                     }
                     return [7 /*endfinally*/];
-                case 12: return [2 /*return*/];
+                case 13: return [2 /*return*/];
             }
         });
     }); }, [hookCall, notify, runEffects, hydrated, state, init.name]);
