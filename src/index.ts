@@ -283,8 +283,19 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const updateState: Dispatch<SetStateAction<R>> = useCallback(
     async (v) => {
       let willCancel = false
-      // First notify other subscribers
       const newValue = typeof v === "function" ? await (v as any)(state) : v
+      const hasChanded = await (async () => {
+        try {
+          return (
+            JSON.stringify(newValue) !==
+            JSON.stringify(defaultAtomsValues[init.name])
+          )
+        } catch (err) {
+          return true
+        }
+      })()
+      const shouldNotifyOtherSubscribers =
+        typeof defaultAtomsValues[init.name] === "function" ? true : hasChanded
 
       defaultAtomsValues[init.name] = newValue
 
@@ -309,12 +320,16 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       } finally {
         if (!willCancel) {
           if (is18) {
-            notify(init.name, hookCall, newValue)
+            if (shouldNotifyOtherSubscribers) {
+              notify(init.name, hookCall, newValue)
+            }
             // Finally update state
             setState(newValue)
           } else {
             const tm = setTimeout(() => {
-              notify(init.name, hookCall, newValue)
+              if (shouldNotifyOtherSubscribers) {
+                notify(init.name, hookCall, newValue)
+              }
               // Finally update state
               setState(newValue)
               clearTimeout(tm)
