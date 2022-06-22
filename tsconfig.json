@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     // "watch": true,
-    "outDir": "./",
+    "outDir": "./lib",
     "module": "commonjs",
     "esModuleInterop": true,
     "target": "es5",
