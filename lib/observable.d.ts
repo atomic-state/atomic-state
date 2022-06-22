@@ -2,7 +2,7 @@
  * An observable class that uses the observer pattern
  */
 export declare class Observervable {
-    suscribers: any;
+    private suscribers;
     constructor();
     addSubscriber(messageName: string, subscriber: any): Promise<void>;
     removeSubscriber(messageName: string, subscriber: any): Promise<void>;

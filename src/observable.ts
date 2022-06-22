@@ -2,7 +2,7 @@
  * An observable class that uses the observer pattern
  */
 export class Observervable {
-  suscribers: any
+  private suscribers: any
   constructor() {
     this.suscribers = {}
   }
@@ -11,7 +11,11 @@ export class Observervable {
       this.suscribers[messageName] = {}
     }
     let subscriberId = Object.keys(this.suscribers[messageName]).length + 1
-    this.suscribers[messageName][subscriberId] = subscriber
+    if (messageName !== "__proto__" && messageName !== "prototype") {
+      this.suscribers[messageName][subscriberId] = subscriber
+    } else {
+      console.warn('"prototype" and "__proto__" are not valid message names')
+    }
   }
   async removeSubscriber(messageName: string, subscriber: any) {
     for (let observer in this.suscribers[messageName]) {
