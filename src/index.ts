@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { EventEmitter } from "events"
-
 import React, {
   Dispatch,
   SetStateAction,
@@ -18,76 +16,33 @@ import React, {
   version,
 } from "react"
 
+import { Observervable, createObserver } from "./observable"
+import {
+  ActionsObjectType,
+  Atom,
+  Filter,
+  FilterGet,
+  useAtomType,
+} from "./types"
+
+export {
+  Observervable,
+  createObserver,
+  ActionsObjectType,
+  Atom,
+  Filter,
+  FilterGet,
+  useAtomType,
+}
+
 const is18 = parseInt(version.split(".")[0]) >= 18
 
-/**
- * Atom type
- */
-export type Atom<T = any, ActionArgs = any> = {
-  name: string
-  default?: T | Promise<T> | (() => Promise<T>) | (() => T)
-  localStoragePersistence?: boolean
-  /**
-   * Short for `localStoragePersistence`
-   */
-  persist?: boolean
-  /**
-   * If true, `persist` will keep the value in sync between tabs.
-   * By default it's `true`
-   */
-  sync?: boolean
-  /**
-   * If `persist` is true, this will run whenever the state is updated from another tab. This will not run in the tab that updated the state.
-   */
-  onSync?(message: T): void
-  /**
-   * If false, no warning for duplicate keys will be shown
-   */
-  ignoreKeyWarning?: boolean
-  /**
-   * @deprecated
-   * This is for use when `localStoragePersistence` is `true`
-   * By default it's false. This is to prevent hydration errors.
-   * If set to `false`, data from localStorage will be loaded during render, not after.
-   * May have some bugs
-   */
-  hydration?: boolean
-  actions?: {
-    [E in keyof ActionArgs]: (st: {
-      args: ActionArgs[E]
-      state: T
-      dispatch: Dispatch<SetStateAction<T>>
-    }) => void
-  }
-  effects?: ((s: {
-    previous: T
-    state: T
-    dispatch: Dispatch<SetStateAction<T>>
-  }) => void)[]
-}
-
-type ActionsObjectType<ArgsTypes = any> = {
-  [E in keyof ArgsTypes]: (args?: ArgsTypes[E]) => any
-}
-
-const atomEmitters: {
+const atomObserverables: {
   [key: string]: {
-    emitter: EventEmitter
+    observer: Observervable
     notify: (storeName: string, hookCall: string, payload?: any) => void
   }
 } = {}
-
-function createEmitter() {
-  const emitter = new EventEmitter()
-  emitter.setMaxListeners(10e12)
-  function notify(storeName: string, hookCall: string, payload: any) {
-    emitter.emit(storeName, { storeName, hookCall, payload })
-  }
-  return {
-    emitter,
-    notify,
-  }
-}
 
 const defaultAtomsValues: any = {}
 const defaultAtomsInAtomic: any = {}
@@ -272,11 +227,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     pendingAtoms[init.name] = 0
   }
 
-  if (!atomEmitters[init.name]) {
-    atomEmitters[init.name] = createEmitter()
+  if (!atomObserverables[init.name]) {
+    atomObserverables[init.name] = createObserver()
   }
 
-  const { emitter, notify } = atomEmitters[init.name]
+  const { observer, notify } = atomObserverables[init.name]
 
   const [runEffects, setRunEffects] = useState(false)
 
@@ -406,7 +361,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           } else {
             pendingAtoms[init.name] += 1
             if (state || defaultAtomsValues[init.name]) {
-              atomEmitters[init.name].notify(
+              atomObserverables[init.name].notify(
                 init.name,
                 hookCall,
                 state || defaultAtomsValues[init.name]
@@ -435,10 +390,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       }
     }
 
-    emitter.addListener(init.name, handler)
+    observer.addSubscriber(init.name, handler)
 
     return () => {
-      emitter.removeListener(init.name, handler)
+      observer.removeSubscriber(init.name, handler)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runEffects])
@@ -512,36 +467,14 @@ export function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>) {
 }
 export const createAtom = atom
 
-type useAtomType<R, ActionsArgs = any> = () => (
-  | R
-  | Dispatch<SetStateAction<R>>
-  | ActionsObjectType<ActionsArgs>
-)[]
-
-/**
- * Type for the `get` function of filters
- */
-export type FilterGet = {
-  get<R>(atom: useAtomType<R> | Atom<R, any>): R
-}
-
-/**
- * Filter type
- */
-export type Filter<T = any> = {
-  name?: string
-  default?: T
-  get(c: FilterGet): T
-}
-
 const defaultFiltersValues: any = {}
 
 const objectFilters: any = {}
 const resolvedFilters: any = {}
 
-const filterEmitters: {
+const filterObservables: {
   [key: string]: {
-    emitter: EventEmitter
+    observer: Observervable
     notify: (storeName: string, hookCall: string, payload?: {}) => void
   }
 } = {}
@@ -553,14 +486,14 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
   const filterDeps: any = {}
   const depsValues: any = {}
 
-  if (!filterEmitters[name]) {
-    filterEmitters[name] = createEmitter()
+  if (!filterObservables[name]) {
+    filterObservables[name] = createObserver()
   }
 
-  const filterEmitter = filterEmitters[name]
+  const filterObservers = filterObservables[name]
 
   function notifyOtherFilters(hookCall: any, payload: any) {
-    filterEmitter.notify(name, hookCall, payload)
+    filterObservers.notify(name, hookCall, payload)
   }
 
   const getObject = {
@@ -600,11 +533,11 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         subscribedFilters[name] = true
         get(getObject)
         for (let dep in filterDeps) {
-          atomEmitters[dep]?.emitter.addListener(dep, renderValue)
+          atomObserverables[dep]?.observer.addSubscriber(dep, renderValue)
         }
         return () => {
           for (let dep in filterDeps) {
-            atomEmitters[dep]?.emitter.removeListener(dep, renderValue)
+            atomObserverables[dep]?.observer.removeSubscriber(dep, renderValue)
           }
         }
       }
@@ -644,7 +577,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       } catch (err) {}
     }
 
-    async function updateValueFromEvent(e: any) {
+    async function updateValueFromObservableChange(e: any) {
       const { storeName, payload } = e
       if (hookCall !== storeName.hookCall) {
         setFilterValue(payload)
@@ -656,11 +589,17 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     }, [filterValue])
 
     useEffect(() => {
-      filterEmitter.emitter?.addListener(name, updateValueFromEvent)
+      filterObservers.observer?.addSubscriber(
+        name,
+        updateValueFromObservableChange
+      )
       return () => {
         subscribedFilters[name] = false
         resolvedFilters[name] = false
-        filterEmitter?.emitter?.removeListener(name, updateValueFromEvent)
+        filterObservers?.observer?.removeSubscriber(
+          name,
+          updateValueFromObservableChange
+        )
       }
     }, [init])
 
@@ -743,9 +682,8 @@ export const useAtomActions = useActions
 
 // localStorage utilities for web apps
 
-const storageEmitter = (() => {
-  const emm = new EventEmitter()
-  emm.setMaxListeners(10 ** 10)
+const storageOvservable = (() => {
+  const emm = new Observervable()
   return emm
 })()
 
@@ -779,9 +717,9 @@ export function useStorage<K = any>(defaults?: K): K {
   }, [])
 
   useEffect(() => {
-    storageEmitter.addListener("store-changed", updateStore)
+    storageOvservable.addSubscriber("store-changed", updateStore)
     return () => {
-      storageEmitter.removeListener("store-changed", updateStore)
+      storageOvservable.removeSubscriber("store-changed", updateStore)
     }
   }, [])
   return keys
@@ -795,7 +733,7 @@ export const storage = {
     if (typeof localStorage !== "undefined") {
       if (typeof localStorage.setItem === "function") {
         localStorage.setItem(k, JSON.stringify(v))
-        storageEmitter.emit("store-changed", v)
+        storageOvservable.update("store-changed", v)
       }
     }
   },
@@ -806,7 +744,7 @@ export const storage = {
     if (typeof localStorage !== "undefined") {
       if (typeof localStorage.removeItem === "function") {
         localStorage.removeItem(k)
-        storageEmitter.emit("store-changed", {})
+        storageOvservable.update("store-changed", {})
       }
     }
   },
@@ -846,7 +784,7 @@ export function useStorageItem<T = any>(
 ) {
   const [value, setValue] = useState(def)
 
-  const itemListener = () => {
+  const itemObserver = () => {
     if (typeof localStorage !== "undefined") {
       if (JSON.stringify(localStorage[k]) !== JSON.stringify(def)) {
         try {
@@ -859,10 +797,10 @@ export function useStorageItem<T = any>(
   }
 
   useEffect(() => {
-    itemListener()
-    storageEmitter.addListener("store-changed", itemListener)
+    itemObserver()
+    storageOvservable.addSubscriber("store-changed", itemObserver)
     return () => {
-      storageEmitter.removeListener("store-changed", itemListener)
+      storageOvservable.removeSubscriber("store-changed", itemObserver)
     }
   }, [])
 
