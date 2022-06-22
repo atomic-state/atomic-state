@@ -407,13 +407,17 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
       if (persistence && (isBrowserEnv ? isLSReady : true)) {
         if (
-          localStorage[`store-${init.name}`] !== defaultAtomsValues[init.name]
+          localStorage[`store-${init.name}`] !==
+          JSON.stringify(defaultAtomsValues[init.name])
         ) {
           localStorage.setItem(`store-${init.name}`, JSON.stringify(state))
         }
       } else {
         if (typeof localStorage[`store-${init.name}`] !== "undefined") {
-          localStorage.removeItem(`store-${init.name}`)
+          // Only remove from localStorage if persistence is false
+          if (!persistence) {
+            localStorage.removeItem(`store-${init.name}`)
+          }
         }
       }
     }
