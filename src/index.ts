@@ -37,7 +37,7 @@ export {
 
 const is18 = parseInt(version.split(".")[0]) >= 18
 
-const atomObserverables: {
+const atomObservables: {
   [key: string]: {
     observer: Observervable
     notify: (storeName: string, hookCall: string, payload?: any) => void
@@ -48,6 +48,7 @@ const defaultAtomsValues: any = {}
 const defaultAtomsInAtomic: any = {}
 const defaultFiltersInAtomic: any = {}
 const usedKeys: any = {}
+const defaultFiltersValues: any = {}
 
 const pendingAtoms: any = {}
 
@@ -227,11 +228,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     pendingAtoms[init.name] = 0
   }
 
-  if (!atomObserverables[init.name]) {
-    atomObserverables[init.name] = createObserver()
+  if (!atomObservables[init.name]) {
+    atomObservables[init.name] = createObserver()
   }
 
-  const { observer, notify } = atomObserverables[init.name]
+  const { observer, notify } = atomObservables[init.name]
 
   const [runEffects, setRunEffects] = useState(false)
 
@@ -274,8 +275,6 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           ? true
           : hasChanded || notifyIfValueIsDefault
 
-      defaultAtomsValues[init.name] = newValue
-
       try {
         if (runEffects || hydrated.current) {
           for (let effect of effects) {
@@ -296,6 +295,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         setRunEffects(true)
       } finally {
         if (!willCancel) {
+          defaultAtomsValues[init.name] = newValue
           if (is18) {
             if (shouldNotifyOtherSubscribers) {
               notify(init.name, hookCall, newValue)
@@ -361,7 +361,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           } else {
             pendingAtoms[init.name] += 1
             if (state || defaultAtomsValues[init.name]) {
-              atomObserverables[init.name].notify(
+              atomObservables[init.name].notify(
                 init.name,
                 hookCall,
                 state || defaultAtomsValues[init.name]
@@ -471,8 +471,6 @@ export function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>) {
 }
 export const createAtom = atom
 
-const defaultFiltersValues: any = {}
-
 const objectFilters: any = {}
 const resolvedFilters: any = {}
 
@@ -537,11 +535,11 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         subscribedFilters[name] = true
         get(getObject)
         for (let dep in filterDeps) {
-          atomObserverables[dep]?.observer.addSubscriber(dep, renderValue)
+          atomObservables[dep]?.observer.addSubscriber(dep, renderValue)
         }
         return () => {
           for (let dep in filterDeps) {
-            atomObserverables[dep]?.observer.removeSubscriber(dep, renderValue)
+            atomObservables[dep]?.observer.removeSubscriber(dep, renderValue)
           }
         }
       }
