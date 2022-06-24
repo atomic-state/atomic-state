@@ -1,16 +1,20 @@
-import { Atom, atom } from "../"
+import { Atom, atom, filter } from "../"
 
-export const clicks: Atom<number> = {
+export const clicks: Atom<number> = atom({
   name: "clicks-count",
   default: 0,
-  effects: [
-    async ({ state }) => {
-      console.log("New state:", state)
-    },
-  ],
-}
+})
 
 export const nameAtom: Atom<string> = {
   name: "user-name",
   default: "",
 }
+
+export const clicksFilter = filter<number>({
+  name: "clicksFilter",
+  default: 0,
+  get({ get }) {
+    const count = get(clicks)
+    return count * 2
+  },
+})
