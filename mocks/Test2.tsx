@@ -14,7 +14,7 @@ export const NameField = () => {
       <input
         title="name field"
         type="text"
-        value={name || ""}
+        value={name}
         onChange={(e) => setName(e.target.value)}
       />
     </div>

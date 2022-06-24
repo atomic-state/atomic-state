@@ -315,22 +315,12 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         } finally {
           if (!willCancel) {
             defaultAtomsValues[init.name] = newValue
-            if (is18) {
-              if (shouldNotifyOtherSubscribers) {
-                notify(init.name, hookCall, newValue)
-              }
-              // Finally update state
-              setState(newValue)
-            } else {
-              const tm = setTimeout(() => {
-                if (shouldNotifyOtherSubscribers) {
-                  notify(init.name, hookCall, newValue)
-                }
-                // Finally update state
-                setState(newValue)
-                clearTimeout(tm)
-              }, 0)
+
+            if (shouldNotifyOtherSubscribers) {
+              notify(init.name, hookCall, newValue)
             }
+            // Finally update state
+            setState(newValue)
           }
         }
       }
@@ -403,10 +393,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   useEffect(() => {
     const handler = async (e: any) => {
       if (e.hookCall !== hookCall) {
-        const tm = setTimeout(() => {
-          setState(e.payload)
-          clearTimeout(tm)
-        }, 0)
+        setState(e.payload)
       }
     }
 
