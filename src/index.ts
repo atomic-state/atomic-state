@@ -50,6 +50,8 @@ const defaultFiltersInAtomic: any = {}
 const usedKeys: any = {}
 const defaultFiltersValues: any = {}
 
+const atomsEffectsCleanupFunctons: any = {}
+
 const pendingAtoms: any = {}
 
 export const AtomicState: React.FC<{
@@ -100,6 +102,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const hydration = true
 
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
+
+  if (!(init.name in atomsEffectsCleanupFunctons)) {
+    atomsEffectsCleanupFunctons[init.name] = []
+  }
 
   const isDefined = typeof init.default !== "undefined"
 
@@ -275,42 +281,56 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           ? true
           : hasChanded || notifyIfValueIsDefault
 
+      // We first run every cleanup functions returned in atom effects
       try {
-        if (runEffects || hydrated.current) {
-          for (let effect of effects) {
-            const cancelStateUpdate = (await effect({
-              previous: state,
-              state: newValue,
-              dispatch: updateState,
-            })) as unknown as boolean
-            if (
-              typeof cancelStateUpdate !== "undefined" &&
-              !cancelStateUpdate
-            ) {
-              willCancel = true
-            }
-          }
+        for (let cleanupFunction of atomsEffectsCleanupFunctons[init.name]) {
+          cleanupFunction()
         }
       } catch (err) {
-        setRunEffects(true)
       } finally {
-        if (!willCancel) {
-          defaultAtomsValues[init.name] = newValue
-          if (is18) {
-            if (shouldNotifyOtherSubscribers) {
-              notify(init.name, hookCall, newValue)
+        // We reset all atom cleanup functions
+        atomsEffectsCleanupFunctons[init.name] = []
+        try {
+          if (runEffects || hydrated.current) {
+            for (let effect of effects) {
+              const cancelStateUpdate = (await effect({
+                previous: state,
+                state: newValue,
+                dispatch: updateState,
+              })) as unknown as boolean
+              if (
+                typeof cancelStateUpdate !== "undefined" &&
+                !cancelStateUpdate
+              ) {
+                willCancel = true
+              } else {
+                if (typeof cancelStateUpdate === "function") {
+                  atomsEffectsCleanupFunctons[init.name].push(cancelStateUpdate)
+                }
+              }
             }
-            // Finally update state
-            setState(newValue)
-          } else {
-            const tm = setTimeout(() => {
+          }
+        } catch (err) {
+          setRunEffects(true)
+        } finally {
+          if (!willCancel) {
+            defaultAtomsValues[init.name] = newValue
+            if (is18) {
               if (shouldNotifyOtherSubscribers) {
                 notify(init.name, hookCall, newValue)
               }
               // Finally update state
               setState(newValue)
-              clearTimeout(tm)
-            }, 0)
+            } else {
+              const tm = setTimeout(() => {
+                if (shouldNotifyOtherSubscribers) {
+                  notify(init.name, hookCall, newValue)
+                }
+                // Finally update state
+                setState(newValue)
+                clearTimeout(tm)
+              }, 0)
+            }
           }
         }
       }
