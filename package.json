@@ -1,6 +1,6 @@
 {
   "name": "atomic-state",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "description": "State managment library for React",
   "main": "lib/index.js",
   "repository": {
@@ -18,7 +18,7 @@
   ],
   "author": "Dany Beltran",
   "license": "MIT",
-  "homepage": "https://github.com/atomic-state/atomic-state#readme",
+  "homepage": "https://atomic-state.org/",
   "devDependencies": {
     "@babel/preset-env": "^7.15.8",
     "@babel/preset-react": "^7.14.5",
