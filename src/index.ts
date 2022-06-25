@@ -199,7 +199,6 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
               updateState(newState)
               await onSync(newState)
             }
-            // notify(init.name, hookCall, newState)
           } catch (err) {}
         }
       }
@@ -524,10 +523,15 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     const hookCall = useMemo(() => Math.random(), [])
 
     function getInitialValue() {
+      const beforeGet = subscribedFilters[name]
+        ? defaultFiltersValues[init.name]
+        : get(getObject)
       try {
         resolvedFilters[`${name}`] = true
         return typeof defaultFiltersValues[`${name}`] === "undefined"
-          ? init.default
+          ? typeof beforeGet === "undefined"
+            ? init.default
+            : beforeGet
           : defaultFiltersValues[`${name}`]
       } catch (err) {
         return init.default
@@ -540,7 +544,6 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       // Whenever the filter object / function changes, add atoms deps again
       if (!subscribedFilters[name]) {
         subscribedFilters[name] = true
-        get(getObject)
         for (let dep in filterDeps) {
           atomObservables[dep]?.observer.addSubscriber(dep, renderValue)
         }
@@ -575,14 +578,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       try {
         const newValue = await get(getObject)
         defaultFiltersValues[`${name}`] = newValue
-        if (is18) {
-          setFilterValue(newValue)
-        } else {
-          const tm = setTimeout(() => {
-            setFilterValue(newValue)
-            clearTimeout(tm)
-          }, 0)
-        }
+        setFilterValue(newValue)
       } catch (err) {}
     }
 
