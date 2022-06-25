@@ -58,7 +58,7 @@ export declare type FilterGet = {
  * Filter type
  */
 export declare type Filter<T = any> = {
-    name?: string;
+    name: string;
     default?: T;
     get(c: FilterGet): T;
 };

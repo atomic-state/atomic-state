@@ -67,7 +67,7 @@ export type FilterGet = {
  * Filter type
  */
 export type Filter<T = any> = {
-  name?: string
+  name: string
   default?: T
   get(c: FilterGet): T
 }
