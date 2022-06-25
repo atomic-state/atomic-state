@@ -523,15 +523,16 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     const hookCall = useMemo(() => Math.random(), [])
 
     function getInitialValue() {
-      const beforeGet = subscribedFilters[name]
-        ? defaultFiltersValues[init.name]
-        : get(getObject)
       try {
         resolvedFilters[`${name}`] = true
         return typeof defaultFiltersValues[`${name}`] === "undefined"
-          ? typeof beforeGet === "undefined"
-            ? init.default
-            : beforeGet
+          ? (() => {
+              let firstResolved = get(getObject)
+              if (typeof firstResolved === "undefined") {
+                return init.default
+              }
+              return firstResolved
+            })()
           : defaultFiltersValues[`${name}`]
       } catch (err) {
         return init.default
