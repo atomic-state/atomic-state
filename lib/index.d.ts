@@ -22,6 +22,10 @@ export declare const AtomicState: React.FC<{
     filters?: {
         [key: string]: any;
     };
+    /**
+     * The prefix added to atoms inside this component
+     */
+    prefix?: string;
 }>;
 /**
  * Creates an atom containing state
