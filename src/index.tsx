@@ -83,21 +83,28 @@ export const AtomicState: React.FC<{
 }> = ({ children, atoms, filters, prefix = "store" }) => {
   const atomicContext = useContext(atomicStateContext)
 
+  let atomicPrefix =
+    typeof prefix === "undefined" ? atomicContext.prefix : prefix
+
   if (atoms) {
     for (let atomKey in atoms) {
-      if (typeof defaultAtomsValues[`${prefix}-${atomKey}`] === "undefined") {
-        defaultAtomsValues[`${prefix}-${atomKey}`] = atoms[atomKey]
-        defaultAtomsInAtomic[`${prefix}-${atomKey}`] = true
+      if (
+        typeof defaultAtomsValues[`${atomicPrefix}-${atomKey}`] === "undefined"
+      ) {
+        defaultAtomsValues[`${atomicPrefix}-${atomKey}`] = atoms[atomKey]
+        defaultAtomsInAtomic[`${atomicPrefix}-${atomKey}`] = true
       }
     }
   }
   if (filters) {
     for (let filterKey in filters) {
       if (
-        typeof defaultFiltersValues[`${prefix}-${filterKey}`] === "undefined"
+        typeof defaultFiltersValues[`${atomicPrefix}-${filterKey}`] ===
+        "undefined"
       ) {
-        defaultFiltersValues[`${prefix}-${filterKey}`] = filters[filterKey]
-        defaultFiltersInAtomic[`${prefix}-${filterKey}`] = true
+        defaultFiltersValues[`${atomicPrefix}-${filterKey}`] =
+          filters[filterKey]
+        defaultFiltersInAtomic[`${atomicPrefix}-${filterKey}`] = true
       }
     }
   }
@@ -107,10 +114,10 @@ export const AtomicState: React.FC<{
   return (
     <atomicStateContext.Provider
       value={{
-        prefix: typeof prefix === "undefined" ? atomicContext.prefix : prefix,
+        prefix: atomicPrefix,
       }}
     >
-      {memoizedChildren}
+      {children}
     </atomicStateContext.Provider>
   )
 }
@@ -311,7 +318,9 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       })()
 
       const shouldNotifyOtherSubscribers =
-        typeof defaultAtomsValues[$atomKey] === "function" ? true : hasChanded
+        typeof defaultAtomsValues[$atomKey] === "function"
+          ? true
+          : hasChanded || notifyIfValueIsDefault
 
       // We first run every cleanup functions returned in atom effects
       try {
@@ -632,6 +641,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         defaultFiltersValues[$filterKey] = newValue
         const tm = setTimeout(() => {
           setFilterValue(newValue)
+          notifyOtherFilters(hookCall, newValue)
           clearTimeout(tm)
         }, 0)
       } catch (err) {}
