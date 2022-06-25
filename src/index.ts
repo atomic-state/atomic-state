@@ -579,7 +579,10 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       try {
         const newValue = await get(getObject)
         defaultFiltersValues[`${name}`] = newValue
-        setFilterValue(newValue)
+        const tm = setTimeout(() => {
+          setFilterValue(newValue)
+          clearTimeout(tm)
+        }, 0)
       } catch (err) {}
     }
 
