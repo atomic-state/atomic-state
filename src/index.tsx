@@ -580,21 +580,10 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         },
         read: ($filter: any) => {
           if (typeof $filter !== "function") {
-            console.warn(
-              `It looks like you are trying to read the filter '${$filter.name}' that was defined as a plain object inside another filter. This is not supported yet (and only works if, for example, there is another filter or atom that will re-render the filter), instead, define it using the 'filter' function so the filter using it can subscribe to its changes.`
-            )
-            depsValues[`${prefix}-${$filter.name}`] =
-              defaultAtomsValues[`${prefix}-${$filter.name}`]
+            readFilters[`${prefix}-${$filter.name}`] = true
           } else {
-            for (let dep in $filter.deps) {
-              filterDeps[dep] = true
-              depsValues[dep] = defaultAtomsValues[dep]
-            }
-
-            ;(useFilterGet as any)["deps"] = {
-              ...(useFilterGet as any)["deps"],
-              ...$filter["deps"],
-            }
+            // We want any re-renders from filters used to trigger a re-render of the current filter
+            readFilters[`${prefix}-${$filter["filter-name"]}`] = true
           }
 
           return typeof $filter !== "function"
@@ -669,7 +658,9 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           : JSON.stringify(e.payload) !==
             JSON.stringify(depsValues[`${e.storeName}`])
       ) {
-        depsValues[`${e.storeName}`] = e.payload
+        if (`${e.storeName}` in depsValues) {
+          depsValues[`${e.storeName}`] = e.payload
+        }
         try {
           const newValue = await get(getObject)
           defaultFiltersValues[$filterKey] = newValue
@@ -692,10 +683,27 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         for (let dep in filterDeps) {
           atomObservables[dep]?.observer.addSubscriber(dep, renderValue)
         }
+
+        // We subscribe to any re-renders of filters that our current
+        // filter is using
+        for (let readFilter in readFilters) {
+          filterObservables[readFilter]?.observer.addSubscriber(
+            readFilter,
+            renderValue
+          )
+        }
+
         return () => {
           defaultFiltersInAtomic[$filterKey] = true
           for (let dep in filterDeps) {
             atomObservables[dep]?.observer.removeSubscriber(dep, renderValue)
+          }
+
+          for (let readFilter in readFilters) {
+            filterObservables[readFilter]?.observer.removeSubscriber(
+              readFilter,
+              renderValue
+            )
           }
         }
       }
