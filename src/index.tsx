@@ -406,6 +406,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
             if (typeof v !== "undefined") {
               v.then((val) => {
                 defaultAtomsValues[$atomKey] = val
+                notify($atomKey, hookCall, defaultAtomsValues[$atomKey])
                 updateState(val as R)
               })
             }
@@ -581,16 +582,34 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     function getInitialValue() {
       try {
-        resolvedFilters[$filterKey] = true
-        return typeof defaultFiltersValues[$filterKey] === "undefined"
+        return typeof defaultFiltersValues[$filterKey] === "undefined" &&
+          !defaultFiltersInAtomic[$filterKey]
           ? (() => {
-              let firstResolved = get(getObject)
-              if (typeof firstResolved === "undefined") {
-                return init.default
+              defaultFiltersValues[$filterKey] = init.default
+              let firstResolved
+              try {
+                firstResolved = get(getObject)
+                resolvedFilters[$filterKey] = true
+                if (typeof firstResolved === "undefined") {
+                  return init.default
+                } else {
+                  ;(async () => {
+                    defaultFiltersValues[$filterKey] = await firstResolved
+                  })()
+                }
+              } catch (err) {
+              } finally {
+                return firstResolved
               }
-              return firstResolved
             })()
-          : defaultFiltersValues[$filterKey]
+          : (() => {
+              // We finally notify other filters that this value is ready
+              const tm = setTimeout(() => {
+                notifyOtherFilters(hookCall, defaultFiltersValues[$filterKey])
+                clearTimeout(tm)
+              }, 0)
+              return defaultFiltersValues[$filterKey]
+            })()
       } catch (err) {
         return init.default
       }
@@ -602,13 +621,14 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       // Whenever the filter object / function changes, add atoms deps again
       if (!subscribedFilters[$filterKey]) {
         subscribedFilters[$filterKey] = true
-        if (!defaultFiltersInAtomic[$filterKey]) {
+        if (defaultFiltersInAtomic[$filterKey]) {
           get(getObject)
         }
         for (let dep in filterDeps) {
           atomObservables[dep]?.observer.addSubscriber(dep, renderValue)
         }
         return () => {
+          defaultFiltersInAtomic[$filterKey] = true
           for (let dep in filterDeps) {
             atomObservables[dep]?.observer.removeSubscriber(dep, renderValue)
           }
@@ -618,7 +638,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     const [filterValue, setFilterValue] = useState<R>(
       initialValue instanceof Promise || typeof initialValue === "undefined"
-        ? undefined
+        ? init.default
         : (() => {
             defaultFiltersValues[$filterKey] = initialValue
             return initialValue
@@ -635,16 +655,23 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     }, [initialValue])
 
     async function renderValue(e: any) {
-      depsValues[`${e.storeName}`] = e.payload
-      try {
-        const newValue = await get(getObject)
-        defaultFiltersValues[$filterKey] = newValue
-        const tm = setTimeout(() => {
-          setFilterValue(newValue)
-          notifyOtherFilters(hookCall, newValue)
-          clearTimeout(tm)
-        }, 0)
-      } catch (err) {}
+      if (
+        typeof e.payload === "function"
+          ? true
+          : JSON.stringify(e.payload) !==
+            JSON.stringify(depsValues[`${e.storeName}`])
+      ) {
+        depsValues[`${e.storeName}`] = e.payload
+        try {
+          const newValue = await get(getObject)
+          defaultFiltersValues[$filterKey] = newValue
+          const tm = setTimeout(() => {
+            setFilterValue(newValue)
+            notifyOtherFilters(hookCall, newValue)
+            clearTimeout(tm)
+          }, 0)
+        } catch (err) {}
+      }
     }
 
     async function updateValueFromObservableChange(e: any) {
