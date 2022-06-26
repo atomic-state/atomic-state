@@ -53,6 +53,7 @@ export declare type useAtomType<R, ActionsArgs = any> = () => (R | Dispatch<SetS
  */
 export declare type FilterGet = {
     get<R>(atom: useAtomType<R> | Atom<R, any>): R;
+    read<R>(filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R;
 };
 /**
  * Filter type

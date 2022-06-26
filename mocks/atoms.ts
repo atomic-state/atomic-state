@@ -10,11 +10,19 @@ export const nameAtom: Atom<string> = {
   default: "",
 }
 
-export const clicksFilter = filter<number>({
+export const clicksFilter = filter({
   name: "clicksFilter",
   default: 0,
   get({ get }) {
     const count = get(clicks)
     return count * 2
+  },
+})
+
+export const tripleCliksFilter = filter({
+  name: "tripleCliksFilter",
+  get({ read }) {
+    const double = read(clicksFilter)
+    return double * 3
   },
 })
