@@ -61,6 +61,7 @@ export type useAtomType<R, ActionsArgs = any> = () => (
  */
 export type FilterGet = {
   get<R>(atom: useAtomType<R> | Atom<R, any>): R
+  read<R>(filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R
 }
 
 /**

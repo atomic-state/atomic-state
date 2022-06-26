@@ -7,7 +7,8 @@
 import React from "react";
 import { Observervable, createObserver } from "./observable";
 import { ActionsObjectType, Atom, Filter, FilterGet, useAtomType } from "./types";
-export { Observervable, createObserver, ActionsObjectType, Atom, Filter, FilterGet, useAtomType, };
+export { Observervable, createObserver };
+export type { ActionsObjectType, Atom, Filter, FilterGet, useAtomType };
 export declare const AtomicState: React.FC<{
     children: any;
     /**
