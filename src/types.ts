@@ -43,6 +43,10 @@ export type Atom<T = any, ActionArgs = any> = {
     previous: T
     state: T
     dispatch: Dispatch<SetStateAction<T>>
+    /**
+     * Cancel the new state update
+     */
+    cancel: () => void
   }) => void)[]
 }
 

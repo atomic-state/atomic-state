@@ -241,10 +241,16 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const hydrated = useRef(false)
 
   const updateState: Dispatch<SetStateAction<R>> = useCallback(
-    async (v) => {
+    (v) => {
       let willCancel = false
-      const newValue = typeof v === "function" ? await (v as any)(state) : v
-      const hasChanded = await (async () => {
+      let newValue
+      let hasChanded
+
+      function cancelUpdate() {
+        willCancel = true
+      }
+      newValue = typeof v === "function" ? (v as any)(state) : v
+      hasChanded = (() => {
         try {
           return (
             JSON.stringify(newValue) !==
@@ -255,7 +261,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         }
       })()
 
-      const notifyIfValueIsDefault = await (async () => {
+      const notifyIfValueIsDefault = (() => {
         try {
           if (typeof defaultAtomsValues[$atomKey] === "function") {
             return true
@@ -289,12 +295,24 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         try {
           if (runEffects || hydrated.current) {
             for (let effect of effects) {
-              const cancelStateUpdate = (await effect({
+              const cancelStateUpdate = effect({
                 previous: state,
                 state: newValue,
                 dispatch: updateState,
-              })) as unknown as boolean
-              if (
+                cancel: cancelUpdate,
+              }) as unknown as boolean | Promise<any>
+
+              if (cancelStateUpdate instanceof Promise) {
+                cancelStateUpdate.then((r) => {
+                  if (typeof r !== "undefined" && !r) {
+                    willCancel = true
+                  } else {
+                    if (typeof r === "function") {
+                      atomsEffectsCleanupFunctons[$atomKey].push(r)
+                    }
+                  }
+                })
+              } else if (
                 typeof cancelStateUpdate !== "undefined" &&
                 !cancelStateUpdate
               ) {
@@ -363,25 +381,29 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   }, [init.name])
 
   useEffect(() => {
-    if (typeof vIfPersistence !== "undefined") {
-      if (!hydrated.current) {
-        const tm1 = setTimeout(() => {
-          if (
-            localStorage[$atomKey] !==
-            JSON.stringify(defaultAtomsValues[$atomKey])
-          ) {
-            updateState(vIfPersistence)
-          }
-          setIsLSReady(true)
-        }, 0)
+    if (persistence) {
+      if (typeof vIfPersistence !== "undefined") {
+        if (!hydrated.current) {
+          const tm1 = setTimeout(() => {
+            if (
+              localStorage[$atomKey] !==
+              JSON.stringify(defaultAtomsValues[$atomKey])
+            ) {
+              if (!resolvedAtoms[$atomKey]) {
+                updateState(vIfPersistence)
+              }
+            }
+            setIsLSReady(true)
+          }, 0)
 
-        const tm2 = setTimeout(() => {
-          setVIfPersistence(undefined)
-          hydrated.current = true
-        }, 0)
-        return () => {
-          clearTimeout(tm1)
-          clearTimeout(tm2)
+          const tm2 = setTimeout(() => {
+            setVIfPersistence(undefined)
+            hydrated.current = true
+          }, 0)
+          return () => {
+            clearTimeout(tm1)
+            clearTimeout(tm2)
+          }
         }
       }
     }
