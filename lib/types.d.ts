@@ -42,6 +42,10 @@ export declare type Atom<T = any, ActionArgs = any> = {
         previous: T;
         state: T;
         dispatch: Dispatch<SetStateAction<T>>;
+        /**
+         * Cancel the new state update
+         */
+        cancel: () => void;
     }) => void)[];
 };
 export declare type ActionsObjectType<ArgsTypes = any> = {
