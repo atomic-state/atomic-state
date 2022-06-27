@@ -174,7 +174,9 @@ function useAtomCreate(init) {
   const [vIfPersistence, setVIfPersistence] = React.useState(() => {
     try {
       if (hydration) {
-        return JSON.parse(localStorage[$atomKey])
+        return typeof defaultFiltersValues[$atomKey] == "undefined"
+          ? JSON.parse(localStorage[$atomKey])
+          : defaultFiltersValues[$atomKey]
       } else return undefined
     } catch (err) {
       return initialValue
@@ -318,7 +320,12 @@ function useAtomCreate(init) {
     if (typeof vIfPersistence !== "undefined") {
       if (!hydrated.current) {
         const tm1 = setTimeout(() => {
-          updateState(vIfPersistence)
+          if (
+            localStorage[$atomKey] !==
+            JSON.stringify(defaultAtomsValues[$atomKey])
+          ) {
+            updateState(vIfPersistence)
+          }
           setIsLSReady(true)
         }, 0)
         const tm2 = setTimeout(() => {
