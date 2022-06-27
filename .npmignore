@@ -2,7 +2,6 @@ __tests__
 tests
 src
 .npmignore
-dist
 documenation
 .github
 .gitignore
