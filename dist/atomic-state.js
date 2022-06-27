@@ -343,10 +343,10 @@ function useAtomCreate(init) {
     return () => {}
   }, [init.name])
   useEffect(() => {
-    if (persistence) {
-      if (typeof vIfPersistence !== "undefined") {
-        if (!hydrated.current) {
-          const tm1 = setTimeout(() => {
+    if (typeof vIfPersistence !== "undefined") {
+      if (!hydrated.current) {
+        const tm1 = setTimeout(() => {
+          if (persistence) {
             if (
               localStorage[$atomKey] !==
               JSON.stringify(defaultAtomsValues[$atomKey])
@@ -356,15 +356,16 @@ function useAtomCreate(init) {
               }
             }
             setIsLSReady(true)
-          }, 0)
-          const tm2 = setTimeout(() => {
-            setVIfPersistence(undefined)
-            hydrated.current = true
-          }, 0)
-          return () => {
-            clearTimeout(tm1)
-            clearTimeout(tm2)
           }
+        }, 0)
+
+        const tm2 = setTimeout(() => {
+          setVIfPersistence(undefined)
+          hydrated.current = true
+        }, 0)
+        return () => {
+          clearTimeout(tm1)
+          clearTimeout(tm2)
         }
       }
     }
