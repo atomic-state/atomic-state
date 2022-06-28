@@ -615,7 +615,13 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
             }
           }
           return typeof atom !== "function"
-            ? defaultAtomsValues[`${prefix}-${atom.name}`]
+            ? typeof defaultAtomsValues[`${prefix}-${atom.name}`] ===
+              "undefined"
+              ? atom.default
+              : defaultAtomsValues[`${prefix}-${atom.name}`]
+            : typeof defaultAtomsValues[`${prefix}-${atom["atom-name"]}`] ===
+              "undefined"
+            ? atom["init-object"].default
             : defaultAtomsValues[`${prefix}-${atom["atom-name"]}`]
         },
         read: ($filter: any) => {
@@ -627,7 +633,14 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           }
 
           return typeof $filter !== "function"
-            ? defaultFiltersValues[`${prefix}-${$filter.name}`]
+            ? typeof defaultFiltersValues[`${prefix}-${$filter.name}`] ===
+              "undefined"
+              ? $filter.default
+              : defaultFiltersValues[`${prefix}-${$filter.name}`]
+            : typeof defaultFiltersValues[
+                `${prefix}-${$filter["filter-name"]}`
+              ] === "undefined"
+            ? $filter["init-object"]?.default
             : defaultFiltersValues[`${prefix}-${$filter["filter-name"]}`]
         },
       }),
