@@ -47,16 +47,6 @@ function createObserver() {
   }
 }
 
-const {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} = React
-
 const atomObservables = {}
 const defaultAtomsValues = {}
 const defaultAtomsInAtomic = {}
@@ -65,11 +55,11 @@ const usedKeys = {}
 const defaultFiltersValues = {}
 const atomsEffectsCleanupFunctons = {}
 const pendingAtoms = {}
-const atomicStateContext = createContext({
+const atomicStateContext = React.createContext({
   prefix: "store",
 })
 const AtomicState = ({ children, atoms, filters, prefix = "store" }) => {
-  const atomicContext = useContext(atomicStateContext)
+  const atomicContext = React.useContext(atomicStateContext)
   let atomicPrefix =
     typeof prefix === "undefined" ? atomicContext.prefix : prefix
   if (atoms) {
@@ -94,7 +84,7 @@ const AtomicState = ({ children, atoms, filters, prefix = "store" }) => {
       }
     }
   }
-  const memoizedChildren = useMemo(() => children, [prefix])
+  const memoizedChildren = React.useMemo(() => children, [prefix])
   return React.createElement(
     atomicStateContext.Provider,
     {
@@ -114,12 +104,12 @@ function useAtomCreate(init) {
     sync = true,
     onSync = () => {},
   } = init
-  const { prefix } = useContext(atomicStateContext)
+  const { prefix } = React.useContext(atomicStateContext)
   const $atomKey = prefix + "-" + init.name
-  const [isLSReady, setIsLSReady] = useState(false)
+  const [isLSReady, setIsLSReady] = React.useState(false)
   const persistence = localStoragePersistence || persist
   const hydration = true
-  const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
+  const hookCall = React.useMemo(() => `${Math.random()}`.split(".")[1], [])
   if (!($atomKey in atomsEffectsCleanupFunctons)) {
     atomsEffectsCleanupFunctons[$atomKey] = []
   }
@@ -181,7 +171,7 @@ function useAtomCreate(init) {
       return initVal
     }
   })()
-  const [vIfPersistence, setVIfPersistence] = useState(() => {
+  const [vIfPersistence, setVIfPersistence] = React.useState(() => {
     try {
       if (hydration) {
         return typeof defaultFiltersValues[$atomKey] == "undefined"
@@ -208,9 +198,9 @@ function useAtomCreate(init) {
     atomObservables[$atomKey] = createObserver()
   }
   const { observer, notify } = atomObservables[$atomKey]
-  const [runEffects, setRunEffects] = useState(false)
-  const hydrated = useRef(false)
-  const updateState = useCallback(
+  const [runEffects, setRunEffects] = React.useState(false)
+  const hydrated = React.useRef(false)
+  const updateState = React.useCallback(
     (v) => {
       let willCancel = false
       let newValue
@@ -305,7 +295,7 @@ function useAtomCreate(init) {
     },
     [hookCall, notify, runEffects, hydrated, state, init.name]
   )
-  useEffect(() => {
+  React.useEffect(() => {
     async function storageListener() {
       if (typeof localStorage !== "undefined") {
         if (typeof localStorage[$atomKey] !== "undefined") {
@@ -342,7 +332,7 @@ function useAtomCreate(init) {
     }
     return () => {}
   }, [init.name])
-  useEffect(() => {
+  React.useEffect(() => {
     if (typeof vIfPersistence !== "undefined") {
       if (!hydrated.current) {
         const tm1 = setTimeout(() => {
@@ -370,7 +360,7 @@ function useAtomCreate(init) {
       }
     }
   }, [vIfPersistence, updateState, hydrated])
-  useEffect(() => {
+  React.useEffect(() => {
     async function getPromiseInitialValue() {
       var _a
       // Only resolve promise if default or resolved value are not present
@@ -411,12 +401,12 @@ function useAtomCreate(init) {
     }
     getPromiseInitialValue()
   }, [state, init.default, updateState, init.name, hookCall])
-  useEffect(() => {
+  React.useEffect(() => {
     return () => {
       pendingAtoms[$atomKey] = 0
     }
   }, [init.name])
-  useEffect(() => {
+  React.useEffect(() => {
     const handler = async (e) => {
       if (e.hookCall !== hookCall) {
         setState(e.payload)
@@ -428,7 +418,7 @@ function useAtomCreate(init) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runEffects])
-  useEffect(() => {
+  React.useEffect(() => {
     if (typeof localStorage !== "undefined") {
       const windowExists = typeof window !== "undefined"
       // For react native
@@ -451,8 +441,8 @@ function useAtomCreate(init) {
     }
   }, [init.name, persistence, state])
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const actions = useMemo(() => init.actions || {}, [])
-  const __actions = useMemo(
+  const actions = React.useMemo(() => init.actions || {}, [])
+  const __actions = React.useMemo(
     () =>
       Object.fromEntries(
         Object.keys(actions).map((key) => [
@@ -503,19 +493,19 @@ function filter(init) {
     useFilterGet["deps"] = {}
     let depsValues = {}
     const readFilters = {}
-    const { prefix } = useContext(atomicStateContext)
+    const { prefix } = React.useContext(atomicStateContext)
     const $filterKey = prefix + "-" + name
     if (!filterObservables[$filterKey]) {
       filterObservables[$filterKey] = createObserver()
     }
     const filterObserver = filterObservables[$filterKey]
-    const notifyOtherFilters = useCallback(
+    const notifyOtherFilters = React.useCallback(
       function notifyOtherFilters(hookCall, payload) {
         filterObserver.notify($filterKey, hookCall, payload)
       },
       [prefix]
     )
-    const getObject = useMemo(
+    const getObject = React.useMemo(
       () => ({
         get: (atom) => {
           if (typeof atom !== "function") {
@@ -536,7 +526,13 @@ function filter(init) {
             )
           }
           return typeof atom !== "function"
-            ? defaultAtomsValues[`${prefix}-${atom.name}`]
+            ? typeof defaultAtomsValues[`${prefix}-${atom.name}`] ===
+              "undefined"
+              ? atom.default
+              : defaultAtomsValues[`${prefix}-${atom.name}`]
+            : typeof defaultAtomsValues[`${prefix}-${atom["atom-name"]}`] ===
+              "undefined"
+            ? atom["init-object"].default
             : defaultAtomsValues[`${prefix}-${atom["atom-name"]}`]
         },
         read: ($filter) => {
@@ -547,13 +543,20 @@ function filter(init) {
             readFilters[`${prefix}-${$filter["filter-name"]}`] = true
           }
           return typeof $filter !== "function"
-            ? defaultFiltersValues[`${prefix}-${$filter.name}`]
+            ? typeof defaultFiltersValues[`${prefix}-${$filter.name}`] ===
+              "undefined"
+              ? $filter.default
+              : defaultFiltersValues[`${prefix}-${$filter.name}`]
+            : typeof defaultFiltersValues[
+                `${prefix}-${$filter["filter-name"]}`
+              ] === "undefined"
+            ? $filter["init-object"]?.default
             : defaultFiltersValues[`${prefix}-${$filter["filter-name"]}`]
         },
       }),
       [prefix]
     )
-    const hookCall = useMemo(() => Math.random(), [])
+    const hookCall = React.useMemo(() => Math.random(), [])
     function getInitialValue() {
       try {
         return typeof defaultFiltersValues[$filterKey] === "undefined" &&
@@ -589,7 +592,7 @@ function filter(init) {
       }
     }
     const initialValue = getInitialValue()
-    const [filterValue, setFilterValue] = useState(
+    const [filterValue, setFilterValue] = React.useState(
       initialValue instanceof Promise || typeof initialValue === "undefined"
         ? init.default
         : (() => {
@@ -597,7 +600,7 @@ function filter(init) {
             return initialValue
           })()
     )
-    useEffect(() => {
+    React.useEffect(() => {
       // Render the first time if initialValue is a promise
       if (initialValue instanceof Promise) {
         initialValue.then((initial) => {
@@ -627,7 +630,7 @@ function filter(init) {
         } catch (err) {}
       }
     }
-    useEffect(() => {
+    React.useEffect(() => {
       var _a, _b
       // Whenever the filter object / function changes, add atoms deps again
       if (!subscribedFilters[$filterKey]) {
@@ -669,7 +672,7 @@ function filter(init) {
         setFilterValue(payload)
       }
     }
-    useEffect(() => {
+    React.useEffect(() => {
       var _a
       ;(_a = filterObserver.observer) === null || _a === void 0
         ? void 0
@@ -693,7 +696,7 @@ function filter(init) {
   return useFilterGet
 }
 function useFilter(f) {
-  const { prefix } = useContext(atomicStateContext)
+  const { prefix } = React.useContext(atomicStateContext)
   return typeof f !== "function"
     ? (() => {
         if (typeof objectFilters[`${prefix}-${f.name}`] === "undefined") {
@@ -754,7 +757,7 @@ const storageOvservable = (() => {
  * Get all localStorage items as an object (they will be JSON parsed). You can pass default values (which work with SSR) and a type argument
  */
 function useStorage(defaults) {
-  const [keys, setKeys] = useState(defaults || {})
+  const [keys, setKeys] = React.useState(defaults || {})
   async function updateStore() {
     let $keys = {}
     if (typeof localStorage !== "undefined") {
@@ -772,10 +775,10 @@ function useStorage(defaults) {
     }
     setKeys($keys)
   }
-  useEffect(() => {
+  React.useEffect(() => {
     updateStore()
   }, [])
-  useEffect(() => {
+  React.useEffect(() => {
     storageOvservable.addSubscriber("store-changed", updateStore)
     return () => {
       storageOvservable.removeSubscriber("store-changed", updateStore)
@@ -835,7 +838,7 @@ const storage = {
  * this hook will update its state
  */
 function useStorageItem(k, def = null) {
-  const [value, setValue] = useState(def)
+  const [value, setValue] = React.useState(def)
   const itemObserver = () => {
     if (typeof localStorage !== "undefined") {
       if (JSON.stringify(localStorage[k]) !== JSON.stringify(def)) {
@@ -847,7 +850,7 @@ function useStorageItem(k, def = null) {
       }
     }
   }
-  useEffect(() => {
+  React.useEffect(() => {
     itemObserver()
     storageOvservable.addSubscriber("store-changed", itemObserver)
     return () => {
