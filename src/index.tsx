@@ -17,7 +17,6 @@ import React, {
   useState,
 } from "react"
 
-import { Observervable, createObserver } from "./observable"
 import {
   ActionsObjectType,
   Atom,
@@ -26,13 +25,25 @@ import {
   useAtomType,
 } from "./types"
 
-export { Observervable, createObserver }
-
 export type { ActionsObjectType, Atom, Filter, FilterGet, useAtomType }
+
+import { EventEmitter as Observable } from "events"
+
+export function createObserver() {
+  const observer = new Observable()
+  observer.setMaxListeners(10e10)
+  function notify(storeName: string, hookCall: string, payload: any) {
+    observer.emit(storeName, { storeName, hookCall, payload })
+  }
+  return {
+    observer: observer,
+    notify,
+  }
+}
 
 const atomObservables: {
   [key: string]: {
-    observer: Observervable
+    observer: Observable
     notify: (storeName: string, hookCall: string, payload?: any) => void
   }
 } = {}
@@ -461,10 +472,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       }
     }
 
-    observer.addSubscriber($atomKey, handler)
+    observer.addListener($atomKey, handler)
 
     return () => {
-      observer.removeSubscriber($atomKey, handler)
+      observer.removeListener($atomKey, handler)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runEffects])
@@ -547,7 +558,7 @@ const resolvedFilters: any = {}
 
 const filterObservables: {
   [key: string]: {
-    observer: Observervable
+    observer: Observable
     notify: (storeName: string, hookCall: string, payload?: {}) => void
   }
 } = {}
@@ -710,13 +721,13 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           get(getObject)
         }
         for (let dep in filterDeps) {
-          atomObservables[dep]?.observer.addSubscriber(dep, renderValue)
+          atomObservables[dep]?.observer.addListener(dep, renderValue)
         }
 
         // We subscribe to any re-renders of filters that our current
         // filter is using
         for (let readFilter in readFilters) {
-          filterObservables[readFilter]?.observer.addSubscriber(
+          filterObservables[readFilter]?.observer.addListener(
             readFilter,
             renderValue
           )
@@ -725,11 +736,11 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         return () => {
           defaultFiltersInAtomic[$filterKey] = true
           for (let dep in filterDeps) {
-            atomObservables[dep]?.observer.removeSubscriber(dep, renderValue)
+            atomObservables[dep]?.observer.removeListener(dep, renderValue)
           }
 
           for (let readFilter in readFilters) {
-            filterObservables[readFilter]?.observer.removeSubscriber(
+            filterObservables[readFilter]?.observer.removeListener(
               readFilter,
               renderValue
             )
@@ -746,14 +757,14 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     }
 
     useEffect(() => {
-      filterObserver.observer?.addSubscriber(
+      filterObserver.observer?.addListener(
         $filterKey,
         updateValueFromObservableChange
       )
       return () => {
         subscribedFilters[$filterKey] = false
         resolvedFilters[$filterKey] = false
-        filterObserver?.observer?.removeSubscriber(
+        filterObserver?.observer?.removeListener(
           $filterKey,
           updateValueFromObservableChange
         )
@@ -841,7 +852,7 @@ export const useAtomActions = useActions
 // localStorage utilities for web apps
 
 const storageOvservable = (() => {
-  const emm = new Observervable()
+  const emm = new Observable()
   return emm
 })()
 
@@ -875,9 +886,9 @@ export function useStorage<K = any>(defaults?: K): K {
   }, [])
 
   useEffect(() => {
-    storageOvservable.addSubscriber("store-changed", updateStore)
+    storageOvservable.addListener("store-changed", updateStore)
     return () => {
-      storageOvservable.removeSubscriber("store-changed", updateStore)
+      storageOvservable.removeListener("store-changed", updateStore)
     }
   }, [])
   return keys
@@ -891,7 +902,7 @@ export const storage = {
     if (typeof localStorage !== "undefined") {
       if (typeof localStorage.setItem === "function") {
         localStorage.setItem(k, JSON.stringify(v))
-        storageOvservable.update("store-changed", v)
+        storageOvservable.emit("store-changed", v)
       }
     }
   },
@@ -902,7 +913,7 @@ export const storage = {
     if (typeof localStorage !== "undefined") {
       if (typeof localStorage.removeItem === "function") {
         localStorage.removeItem(k)
-        storageOvservable.update("store-changed", {})
+        storageOvservable.emit("store-changed", {})
       }
     }
   },
@@ -956,9 +967,9 @@ export function useStorageItem<T = any>(
 
   useEffect(() => {
     itemObserver()
-    storageOvservable.addSubscriber("store-changed", itemObserver)
+    storageOvservable.addListener("store-changed", itemObserver)
     return () => {
-      storageOvservable.removeSubscriber("store-changed", itemObserver)
+      storageOvservable.removeListener("store-changed", itemObserver)
     }
   }, [])
 
