@@ -4,11 +4,15 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+/// <reference types="node" />
 import React from "react";
-import { Observervable, createObserver } from "./observable";
 import { ActionsObjectType, Atom, Filter, FilterGet, useAtomType } from "./types";
-export { Observervable, createObserver };
 export type { ActionsObjectType, Atom, Filter, FilterGet, useAtomType };
+import { EventEmitter as Observable } from "events";
+export declare function createObserver(): {
+    observer: Observable;
+    notify: (storeName: string, hookCall: string, payload: any) => void;
+};
 export declare const AtomicState: React.FC<{
     children: any;
     /**
