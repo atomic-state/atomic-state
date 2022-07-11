@@ -217,11 +217,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const [vIfPersistence, setVIfPersistence] = useState(() => {
     try {
-      if (hydration) {
-        return typeof defaultFiltersValues[$atomKey] == "undefined"
-          ? JSON.parse(localStorage[$atomKey] as string)
-          : defaultFiltersValues[$atomKey]
-      } else return undefined
+      return JSON.parse(localStorage[$atomKey] as string)
     } catch (err) {
       return initialValue
     }
@@ -254,7 +250,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const updateState: Dispatch<SetStateAction<R>> = useCallback(
     (v) => {
       let willCancel = false
-      let newValue
+      let newValue: any
       let hasChanded
 
       function cancelUpdate() {
@@ -568,14 +564,11 @@ const subscribedFilters: any = {}
 export function filter<R>(init: Filter<R | Promise<R>>) {
   const { name = "", get } = init
 
+  let filterDeps: any = {}
+  let depsValues: any = {}
+  const readFilters: any = {}
   const useFilterGet = () => {
-    let filterDeps: any = {}
-
     ;(useFilterGet as any)["deps"] = {}
-
-    let depsValues: any = {}
-
-    const readFilters: any = {}
 
     const { prefix } = useContext(atomicStateContext)
 
@@ -591,7 +584,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       function notifyOtherFilters(hookCall: any, payload: any) {
         filterObserver.notify($filterKey, hookCall, payload)
       },
-      [prefix]
+      [prefix, $filterKey]
     )
 
     const getObject = useMemo(
@@ -651,14 +644,13 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     function getInitialValue() {
       try {
-        return typeof defaultFiltersValues[$filterKey] === "undefined" &&
-          !defaultFiltersInAtomic[$filterKey]
+        return !resolvedFilters[$filterKey]
           ? (() => {
+              resolvedFilters[$filterKey] = true
               defaultFiltersValues[$filterKey] = init.default
               let firstResolved
               try {
                 firstResolved = get(getObject)
-                resolvedFilters[$filterKey] = true
                 if (typeof firstResolved === "undefined") {
                   return init.default
                 } else {
@@ -672,11 +664,6 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
               }
             })()
           : (() => {
-              // We finally notify other filters that this value is ready
-              const tm = setTimeout(() => {
-                notifyOtherFilters(hookCall, defaultFiltersValues[$filterKey])
-                clearTimeout(tm)
-              }, 0)
               return defaultFiltersValues[$filterKey]
             })()
       } catch (err) {
@@ -694,6 +681,13 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
             return initialValue
           })()
     )
+
+    useEffect(() => {
+      if (!resolvedFilters[$filterKey]) {
+        notifyOtherFilters(hookCall, filterValue)
+      }
+    }, [filterValue])
+
     useEffect(() => {
       // Render the first time if initialValue is a promise
       if (initialValue instanceof Promise) {
@@ -711,13 +705,17 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           : JSON.stringify(e.payload) !==
             JSON.stringify(depsValues[`${e.storeName}`])
       ) {
-        if (`${e.storeName}` in depsValues) {
+        if (`${e.storeName}` in filterDeps) {
           depsValues[`${e.storeName}`] = e.payload
         }
         try {
-          const newValue = await get(getObject)
-          defaultFiltersValues[$filterKey] = newValue
-          const tm = setTimeout(() => {
+          const tm = setTimeout(async () => {
+            const newValue =
+              e.storeName in filterDeps
+                ? await get(getObject)
+                : defaultFiltersValues[$filterKey]
+
+            defaultFiltersValues[$filterKey] = newValue
             setFilterValue(newValue)
             notifyOtherFilters(hookCall, newValue)
             clearTimeout(tm)
@@ -776,7 +774,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       )
       return () => {
         subscribedFilters[$filterKey] = false
-        resolvedFilters[$filterKey] = false
+        // resolvedFilters[$filterKey] = false
         filterObserver?.observer?.removeListener(
           $filterKey,
           updateValueFromObservableChange
