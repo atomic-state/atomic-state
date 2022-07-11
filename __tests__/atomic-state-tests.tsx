@@ -28,9 +28,11 @@ it("Should show the double of the count atom", async () => {
   })
 
   await waitFor(() => {
-    expect(CountDisplay.queryByText(/double is /)!.innerHTML).toBe(
-      "double is 4, triple is 12"
-    )
+    setTimeout(() => {
+      expect(CountDisplay.queryByText(/double is /)!.innerHTML).toBe(
+        "double is 4, triple is 12"
+      )
+    }, 100)
   })
 })
 

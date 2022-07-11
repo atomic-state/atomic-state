@@ -32,7 +32,7 @@ yarn add atomic-state
 
 
 ```html
-<script src="https://unpkg.com/atomic-state@2.0.2/dist/atomic-state.min.js"></script>
+<script src="https://unpkg.com/atomic-state@2.0.3/dist/atomic-state.min.js"></script>
 ```
 
 [Getting started](https://atomic-state.org/docs/intro)
