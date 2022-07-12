@@ -17,17 +17,84 @@ import React, {
   useState,
 } from "react"
 
-import {
-  ActionsObjectType,
-  Atom,
-  Filter,
-  FilterGet,
-  useAtomType,
-} from "./types"
-
-export type { ActionsObjectType, Atom, Filter, FilterGet, useAtomType }
-
 import { EventEmitter as Observable } from "events"
+
+/**
+ * Atom type
+ */
+export type Atom<T = any, ActionArgs = any> = {
+  name: string
+  default?: T | Promise<T> | (() => Promise<T>) | (() => T)
+  localStoragePersistence?: boolean
+  /**
+   * Short for `localStoragePersistence`
+   */
+  persist?: boolean
+  /**
+   * If true, `persist` will keep the value in sync between tabs.
+   * By default it's `true`
+   */
+  sync?: boolean
+  /**
+   * If `persist` is true, this will run whenever the state is updated from another tab. This will not run in the tab that updated the state.
+   */
+  onSync?(message: T): void
+  /**
+   * If false, no warning for duplicate keys will be shown
+   */
+  ignoreKeyWarning?: boolean
+  /**
+   * @deprecated
+   * This is for use when `localStoragePersistence` is `true`
+   * By default it's false. This is to prevent hydration errors.
+   * If set to `false`, data from localStorage will be loaded during render, not after.
+   * May have some bugs
+   */
+  hydration?: boolean
+  actions?: {
+    [E in keyof ActionArgs]: (st: {
+      args: ActionArgs[E]
+      state: T
+      dispatch: Dispatch<SetStateAction<T>>
+    }) => void
+  }
+  effects?: ((s: {
+    previous: T
+    state: T
+    dispatch: Dispatch<SetStateAction<T>>
+    /**
+     * Cancel the new state update
+     */
+    cancel: () => void
+  }) => void)[]
+}
+
+export type ActionsObjectType<ArgsTypes = any> = {
+  [E in keyof ArgsTypes]: (args?: ArgsTypes[E]) => any
+}
+
+export type useAtomType<R, ActionsArgs = any> = () => (
+  | R
+  | Dispatch<SetStateAction<R>>
+  | ActionsObjectType<ActionsArgs>
+)[]
+
+/**
+ * Type for the `get` function of filters
+ */
+export type FilterGet = {
+  get<R>(atom: useAtomType<R> | Atom<R, any>): R
+  read<R>(filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R
+}
+
+/**
+ * Filter type
+ */
+export type Filter<T = any> = {
+  name: string
+  default?: T
+  get(c: FilterGet): T
+}
 
 export function createObserver() {
   const observer = new Observable()
@@ -143,8 +210,6 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const persistence = localStoragePersistence || persist
 
-  const hydration = true
-
   const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
 
   if (!($atomKey in atomsEffectsCleanupFunctons)) {
@@ -184,11 +249,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
             defaultAtomsInAtomic[$atomKey]
           ) {
             defaultAtomsInAtomic[$atomKey] = false
-            defaultAtomsValues[$atomKey] = isPromiseValue
-              ? undefined
-              : hydration
-              ? initVal
-              : JSON.parse(localStorage[$atomKey] as string)
+            defaultAtomsValues[$atomKey] = isPromiseValue ? undefined : initVal
           }
         }
       } else {
@@ -196,20 +257,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           defaultAtomsValues[$atomKey] = initVal
         }
       }
-      return persistence
-        ? typeof localStorage !== "undefined"
-          ? typeof localStorage[$atomKey] !== "undefined"
-            ? // Only return value from localStorage if not loaded to memory
-              defaultAtomsValues[$atomKey]
-            : isPromiseValue
-            ? undefined
-            : initVal
-          : isPromiseValue
-          ? undefined
-          : initVal
-        : isPromiseValue
-        ? undefined
-        : initVal
+      return initVal
     } catch (err) {
       return initVal
     }
@@ -217,7 +265,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const [vIfPersistence, setVIfPersistence] = useState(() => {
     try {
-      return JSON.parse(localStorage[$atomKey] as string)
+      return (async () => {
+        const storageItem = await localStorage.getItem($atomKey)
+        return JSON.parse(storageItem as any) || init.default
+      })()
     } catch (err) {
       return initialValue
     }
@@ -388,32 +439,36 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   }, [init.name])
 
   useEffect(() => {
-    if (typeof vIfPersistence !== "undefined") {
-      if (!hydrated.current) {
-        const tm1 = setTimeout(() => {
-          if (persistence) {
-            if (
-              localStorage[$atomKey] !==
-              JSON.stringify(defaultAtomsValues[$atomKey])
-            ) {
-              if (!resolvedAtoms[$atomKey]) {
-                updateState(vIfPersistence)
+    async function loadPersistence() {
+      if (typeof vIfPersistence !== "undefined") {
+        if (!hydrated.current) {
+          const tm1 = setTimeout(async () => {
+            if (persistence) {
+              const storageItem = await vIfPersistence
+              if (
+                JSON.stringify(storageItem) !==
+                JSON.stringify(defaultAtomsValues[$atomKey])
+              ) {
+                if (!resolvedAtoms[$atomKey]) {
+                  updateState(storageItem)
+                }
               }
+              setIsLSReady(true)
             }
-            setIsLSReady(true)
-          }
-        }, 0)
+          }, 0)
 
-        const tm2 = setTimeout(() => {
-          setVIfPersistence(undefined)
-          hydrated.current = true
-        }, 0)
-        return () => {
-          clearTimeout(tm1)
-          clearTimeout(tm2)
+          const tm2 = setTimeout(() => {
+            setVIfPersistence(undefined)
+            hydrated.current = true
+          }, 0)
+          return () => {
+            clearTimeout(tm1)
+            clearTimeout(tm2)
+          }
         }
       }
     }
+    loadPersistence()
   }, [vIfPersistence, updateState, hydrated])
 
   useEffect(() => {
@@ -477,28 +532,30 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   }, [runEffects])
 
   useEffect(() => {
-    if (typeof localStorage !== "undefined") {
-      const windowExists = typeof window !== "undefined"
+    async function updateStorage() {
+      if (typeof localStorage !== "undefined") {
+        const windowExists = typeof window !== "undefined"
 
-      // For react native
-      const isBrowserEnv = windowExists && "addEventListener" in window
+        // For react native
+        const isBrowserEnv = windowExists && "addEventListener" in window
 
-      if (persistence && (isBrowserEnv ? isLSReady : true)) {
-        if (
-          localStorage[$atomKey] !==
-          JSON.stringify(defaultAtomsValues[$atomKey])
-        ) {
-          localStorage.setItem($atomKey, JSON.stringify(state))
-        }
-      } else {
-        if (typeof localStorage[$atomKey] !== "undefined") {
-          // Only remove from localStorage if persistence is false
-          if (!persistence) {
-            localStorage.removeItem($atomKey)
+        if (persistence && (isBrowserEnv ? isLSReady : true)) {
+          const storageItem = await localStorage.getItem($atomKey)
+          if (storageItem !== JSON.stringify(defaultAtomsValues[$atomKey])) {
+            localStorage.setItem($atomKey, JSON.stringify(state))
+          }
+        } else {
+          const storageItem = await localStorage.getItem($atomKey)
+          if (typeof storageItem !== "undefined" || storageItem === null) {
+            // Only remove from localStorage if persistence is false
+            if (!persistence) {
+              localStorage.removeItem($atomKey)
+            }
           }
         }
       }
     }
+    updateStorage()
   }, [init.name, persistence, state])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -565,12 +622,17 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
   const { name = "", get } = init
 
   let filterDeps: any = {}
-  let depsValues: any = {}
-  const readFilters: any = {}
+
   const useFilterGet = () => {
+    let depsValues: any = {}
+    let readFilters: any = {}
     ;(useFilterGet as any)["deps"] = {}
 
     const { prefix } = useContext(atomicStateContext)
+
+    if (!filterDeps[`${prefix}-`]) {
+      filterDeps[`${prefix}-`] = {}
+    }
 
     const $filterKey = prefix + "-" + name
 
@@ -591,7 +653,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       () => ({
         get: (atom: any) => {
           if (typeof atom !== "function") {
-            filterDeps[`${prefix}-${atom.name}`] = true
+            filterDeps[`${prefix}-`][`${prefix}-${atom.name}`] = true
             depsValues[`${prefix}-${atom.name}`] =
               defaultAtomsValues[`${prefix}-${atom.name}`]
             ;(useFilterGet as any)["deps"] = {
@@ -599,7 +661,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
               [`${prefix}-${atom.name}`]: true,
             }
           } else {
-            filterDeps[`${prefix}-${atom["atom-name"]}`] = true
+            filterDeps[`${prefix}-`][`${prefix}-${atom["atom-name"]}`] = true
             depsValues[`${prefix}-${atom["atom-name"]}`] =
               defaultAtomsValues[`${prefix}-${atom["atom-name"]}`]
             ;(useFilterGet as any)["deps"] = {
@@ -703,21 +765,24 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         typeof e.payload === "function"
           ? true
           : JSON.stringify(e.payload) !==
-            JSON.stringify(depsValues[`${e.storeName}`])
+            JSON.stringify(depsValues[e.storeName])
       ) {
-        if (`${e.storeName}` in filterDeps) {
-          depsValues[`${e.storeName}`] = e.payload
+        if (e.storeName in filterDeps[`${prefix}-`]) {
+          depsValues[e.storeName] = e.payload
         }
+
         try {
           const tm = setTimeout(async () => {
             const newValue =
-              e.storeName in filterDeps
+              e.storeName in filterDeps[`${prefix}-`] ||
+              !("addEventListener" in window)
                 ? await get(getObject)
                 : defaultFiltersValues[$filterKey]
 
             defaultFiltersValues[$filterKey] = newValue
-            setFilterValue(newValue)
             notifyOtherFilters(hookCall, newValue)
+
+            setFilterValue(newValue)
             clearTimeout(tm)
           }, 0)
         } catch (err) {}
@@ -731,7 +796,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         if (defaultFiltersInAtomic[$filterKey]) {
           get(getObject)
         }
-        for (let dep in filterDeps) {
+        for (let dep in filterDeps[`${prefix}-`]) {
           atomObservables[dep]?.observer.addListener(dep, renderValue)
         }
 
@@ -746,7 +811,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
         return () => {
           defaultFiltersInAtomic[$filterKey] = true
-          for (let dep in filterDeps) {
+          for (let dep in filterDeps[`${prefix}-`]) {
             atomObservables[dep]?.observer.removeListener(dep, renderValue)
           }
 
