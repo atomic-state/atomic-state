@@ -5,10 +5,76 @@
  * LICENSE file in the root directory of this source tree.
  */
 /// <reference types="node" />
-import React from "react";
-import { ActionsObjectType, Atom, Filter, FilterGet, useAtomType } from "./types";
-export type { ActionsObjectType, Atom, Filter, FilterGet, useAtomType };
+import React, { Dispatch, SetStateAction } from "react";
 import { EventEmitter as Observable } from "events";
+/**
+ * Atom type
+ */
+export declare type Atom<T = any, ActionArgs = any> = {
+    name: string;
+    default?: T | Promise<T> | (() => Promise<T>) | (() => T);
+    localStoragePersistence?: boolean;
+    /**
+     * Short for `localStoragePersistence`
+     */
+    persist?: boolean;
+    /**
+     * If true, `persist` will keep the value in sync between tabs.
+     * By default it's `true`
+     */
+    sync?: boolean;
+    /**
+     * If `persist` is true, this will run whenever the state is updated from another tab. This will not run in the tab that updated the state.
+     */
+    onSync?(message: T): void;
+    /**
+     * If false, no warning for duplicate keys will be shown
+     */
+    ignoreKeyWarning?: boolean;
+    /**
+     * @deprecated
+     * This is for use when `localStoragePersistence` is `true`
+     * By default it's false. This is to prevent hydration errors.
+     * If set to `false`, data from localStorage will be loaded during render, not after.
+     * May have some bugs
+     */
+    hydration?: boolean;
+    actions?: {
+        [E in keyof ActionArgs]: (st: {
+            args: ActionArgs[E];
+            state: T;
+            dispatch: Dispatch<SetStateAction<T>>;
+        }) => void;
+    };
+    effects?: ((s: {
+        previous: T;
+        state: T;
+        dispatch: Dispatch<SetStateAction<T>>;
+        /**
+         * Cancel the new state update
+         */
+        cancel: () => void;
+    }) => void)[];
+};
+export declare type ActionsObjectType<ArgsTypes = any> = {
+    [E in keyof ArgsTypes]: (args?: ArgsTypes[E]) => any;
+};
+export declare type useAtomType<R, ActionsArgs = any> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType<ActionsArgs>)[];
+/**
+ * Type for the `get` function of filters
+ */
+export declare type FilterGet = {
+    get<R>(atom: useAtomType<R> | Atom<R, any>): R;
+    read<R>(filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R;
+};
+/**
+ * Filter type
+ */
+export declare type Filter<T = any> = {
+    name: string;
+    default?: T;
+    get(c: FilterGet): T;
+};
 export declare function createObserver(): {
     observer: Observable;
     notify: (storeName: string, hookCall: string, payload: any) => void;
