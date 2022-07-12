@@ -494,8 +494,8 @@
       useFilterGet["deps"] = {}
       const { prefix } = useContext(atomicStateContext)
 
-      if (!filterDeps[prefix]) {
-        filterDeps[prefix] = {}
+      if (!filterDeps[`${prefix}-`]) {
+        filterDeps[`${prefix}-`] = {}
       }
 
       const $filterKey = prefix + "-" + name
@@ -513,7 +513,7 @@
         () => ({
           get: (atom) => {
             if (typeof atom !== "function") {
-              filterDeps[prefix][`${prefix}-${atom.name}`] = true
+              filterDeps[`${prefix}-`][`${prefix}-${atom.name}`] = true
               depsValues[`${prefix}-${atom.name}`] =
                 defaultAtomsValues[`${prefix}-${atom.name}`]
               useFilterGet["deps"] = Object.assign(
@@ -521,7 +521,7 @@
                 { [`${prefix}-${atom.name}`]: true }
               )
             } else {
-              filterDeps[prefix][`${prefix}-${atom["atom-name"]}`] = true
+              filterDeps[`${prefix}-`][`${prefix}-${atom["atom-name"]}`] = true
               depsValues[`${prefix}-${atom["atom-name"]}`] =
                 defaultAtomsValues[`${prefix}-${atom["atom-name"]}`]
               useFilterGet["deps"] = Object.assign(
@@ -622,13 +622,13 @@
             : JSON.stringify(e.payload) !==
               JSON.stringify(depsValues[e.storeName])
         ) {
-          if (e.storeName in filterDeps[prefix]) {
+          if (e.storeName in filterDeps[`${prefix}-`]) {
             depsValues[e.storeName] = e.payload
           }
           try {
             const tm = setTimeout(async () => {
               const newValue =
-                e.storeName in filterDeps[prefix] ||
+                e.storeName in filterDeps[`${prefix}-`] ||
                 !("addEventListener" in window)
                   ? await get(getObject)
                   : defaultFiltersValues[$filterKey]
@@ -648,7 +648,7 @@
           if (defaultFiltersInAtomic[$filterKey]) {
             get(getObject)
           }
-          for (let dep in filterDeps[prefix]) {
+          for (let dep in filterDeps[`${prefix}-`]) {
             ;(_a = atomObservables[dep]) === null || _a === void 0
               ? void 0
               : _a.observer.addListener(dep, renderValue)
@@ -663,7 +663,7 @@
           return () => {
             var _a, _b
             defaultFiltersInAtomic[$filterKey] = true
-            for (let dep in filterDeps[prefix]) {
+            for (let dep in filterDeps[`${prefix}-`]) {
               ;(_a = atomObservables[dep]) === null || _a === void 0
                 ? void 0
                 : _a.observer.removeListener(dep, renderValue)

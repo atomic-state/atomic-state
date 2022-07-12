@@ -630,8 +630,8 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     const { prefix } = useContext(atomicStateContext)
 
-    if (!filterDeps[prefix]) {
-      filterDeps[prefix] = {}
+    if (!filterDeps[`${prefix}-`]) {
+      filterDeps[`${prefix}-`] = {}
     }
 
     const $filterKey = prefix + "-" + name
@@ -653,7 +653,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       () => ({
         get: (atom: any) => {
           if (typeof atom !== "function") {
-            filterDeps[prefix][`${prefix}-${atom.name}`] = true
+            filterDeps[`${prefix}-`][`${prefix}-${atom.name}`] = true
             depsValues[`${prefix}-${atom.name}`] =
               defaultAtomsValues[`${prefix}-${atom.name}`]
             ;(useFilterGet as any)["deps"] = {
@@ -661,7 +661,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
               [`${prefix}-${atom.name}`]: true,
             }
           } else {
-            filterDeps[prefix][`${prefix}-${atom["atom-name"]}`] = true
+            filterDeps[`${prefix}-`][`${prefix}-${atom["atom-name"]}`] = true
             depsValues[`${prefix}-${atom["atom-name"]}`] =
               defaultAtomsValues[`${prefix}-${atom["atom-name"]}`]
             ;(useFilterGet as any)["deps"] = {
@@ -767,14 +767,14 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           : JSON.stringify(e.payload) !==
             JSON.stringify(depsValues[e.storeName])
       ) {
-        if (e.storeName in filterDeps[prefix]) {
+        if (e.storeName in filterDeps[`${prefix}-`]) {
           depsValues[e.storeName] = e.payload
         }
 
         try {
           const tm = setTimeout(async () => {
             const newValue =
-              e.storeName in filterDeps[prefix] ||
+              e.storeName in filterDeps[`${prefix}-`] ||
               !("addEventListener" in window)
                 ? await get(getObject)
                 : defaultFiltersValues[$filterKey]
@@ -796,7 +796,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         if (defaultFiltersInAtomic[$filterKey]) {
           get(getObject)
         }
-        for (let dep in filterDeps[prefix]) {
+        for (let dep in filterDeps[`${prefix}-`]) {
           atomObservables[dep]?.observer.addListener(dep, renderValue)
         }
 
@@ -811,7 +811,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
         return () => {
           defaultFiltersInAtomic[$filterKey] = true
-          for (let dep in filterDeps[prefix]) {
+          for (let dep in filterDeps[`${prefix}-`]) {
             atomObservables[dep]?.observer.removeListener(dep, renderValue)
           }
 
