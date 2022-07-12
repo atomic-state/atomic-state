@@ -167,8 +167,13 @@
     const [vIfPersistence, setVIfPersistence] = useState(() => {
       try {
         return (async () => {
-          const storageItem = await localStorage.getItem($atomKey)
-          return JSON.parse(storageItem) || init.default
+          const storageItem =
+            typeof localStorage === "undefined"
+              ? init.default
+              : await localStorage.getItem($atomKey)
+          return typeof localStorage === "undefined"
+            ? init.default
+            : JSON.parse(storageItem) || init.default
         })()
       } catch (err) {
         return initialValue
@@ -279,7 +284,10 @@
             if (!willCancel) {
               defaultAtomsValues[$atomKey] = newValue
               if (shouldNotifyOtherSubscribers) {
-                notify($atomKey, hookCall, newValue)
+                const tm = setTimeout(() => {
+                  notify($atomKey, hookCall, newValue)
+                  clearTimeout(tm)
+                }, 0)
               }
               // Finally update state
               setState(newValue)
