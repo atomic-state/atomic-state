@@ -39,7 +39,7 @@
         }
       }
     }
-    async emit(messageName, payload) {
+    emit(messageName, payload) {
       for (let subscribers in this.suscribers[messageName]) {
         this.suscribers[messageName][subscribers](payload)
       }
@@ -283,14 +283,21 @@
           } finally {
             if (!willCancel) {
               defaultAtomsValues[$atomKey] = newValue
-              if (shouldNotifyOtherSubscribers) {
-                const tm = setTimeout(() => {
-                  notify($atomKey, hookCall, newValue)
-                  clearTimeout(tm)
-                }, 0)
+              try {
+                if (shouldNotifyOtherSubscribers) {
+                  if (isActionUpdate) {
+                    const tm = setTimeout(() => {
+                      notify($atomKey, hookCall, newValue)
+                      clearTimeout(tm)
+                    }, 0)
+                  } else {
+                    notify($atomKey, hookCall, newValue)
+                  }
+                }
+              } finally {
+                // Finally update state
+                setState(newValue)
               }
-              // Finally update state
-              setState(newValue)
             }
           }
         }
@@ -458,7 +465,8 @@
               actions[key]({
                 args,
                 state,
-                dispatch: updateState,
+                dispatchSync: updateState,
+                dispatch: (e) => updateState(e, true),
               }),
           ])
         ),
@@ -496,6 +504,7 @@
   function filter(init) {
     const { name = "", get } = init
     let filterDeps = {}
+    let isResolving = false
     const useFilterGet = () => {
       let depsValues = {}
       let readFilters = {}
@@ -634,17 +643,23 @@
             depsValues[e.storeName] = e.payload
           }
           try {
-            const tm = setTimeout(async () => {
-              const newValue =
-                e.storeName in filterDeps[`${prefix}-`] ||
-                !("addEventListener" in window)
-                  ? await get(getObject)
-                  : defaultFiltersValues[$filterKey]
-              defaultFiltersValues[$filterKey] = newValue
-              notifyOtherFilters(hookCall, newValue)
-              setFilterValue(newValue)
-              clearTimeout(tm)
-            }, 0)
+            if (!isResolving) {
+              isResolving = true
+              const tm = setTimeout(async () => {
+                const newValue =
+                  e.storeName in filterDeps[`${prefix}-`] ||
+                  e.storeName in readFilters
+                    ? await get(getObject)
+                    : defaultFiltersValues[$filterKey]
+
+                defaultFiltersValues[$filterKey] = newValue
+                notifyOtherFilters(hookCall, newValue)
+
+                setFilterValue(newValue)
+                isResolving = false
+                clearTimeout(tm)
+              }, 0)
+            }
           } catch (err) {}
         }
       }

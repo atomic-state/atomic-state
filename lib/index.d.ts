@@ -44,6 +44,10 @@ export declare type Atom<T = any, ActionArgs = any> = {
             args: ActionArgs[E];
             state: T;
             dispatch: Dispatch<SetStateAction<T>>;
+            /**
+             * Dispatch a state update synchronously
+             */
+            dispatchSync: Dispatch<SetStateAction<T>>;
         }) => void;
     };
     effects?: ((s: {
