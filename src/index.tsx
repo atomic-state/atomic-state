@@ -56,6 +56,10 @@ export type Atom<T = any, ActionArgs = any> = {
       args: ActionArgs[E]
       state: T
       dispatch: Dispatch<SetStateAction<T>>
+      /**
+       * Dispatch a state update synchronously
+       */
+      dispatchSync: Dispatch<SetStateAction<T>>
     }) => void
   }
   effects?: ((s: {
@@ -304,7 +308,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const hydrated = useRef(false)
 
   const updateState: Dispatch<SetStateAction<R>> = useCallback(
-    (v) => {
+    (v: any, isActionUpdate: any) => {
       let willCancel = false
       let newValue: any
       let hasChanded
@@ -392,21 +396,27 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         } finally {
           if (!willCancel) {
             defaultAtomsValues[$atomKey] = newValue
-
-            if (shouldNotifyOtherSubscribers) {
-              const tm = setTimeout(() => {
-                notify($atomKey, hookCall, newValue)
-                clearTimeout(tm)
-              }, 0)
+            try {
+              if (shouldNotifyOtherSubscribers) {
+                if (isActionUpdate) {
+                  const tm = setTimeout(() => {
+                    notify($atomKey, hookCall, newValue)
+                    clearTimeout(tm)
+                  }, 0)
+                } else {
+                  notify($atomKey, hookCall, newValue)
+                }
+              }
+            } finally {
+              // Finally update state
+              setState(newValue)
             }
-            // Finally update state
-            setState(newValue)
           }
         }
       }
     },
     [hookCall, notify, runEffects, hydrated, state, init.name]
-  )
+  ) as Dispatch<SetStateAction<R>>
 
   useEffect(() => {
     async function storageListener() {
@@ -577,7 +587,9 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
             (actions as any)[key]({
               args,
               state,
-              dispatch: updateState as Dispatch<SetStateAction<R>>,
+              dispatchSync: updateState as Dispatch<SetStateAction<R>>,
+              dispatch: (e: any) =>
+                (updateState as any)(e, true) as Dispatch<SetStateAction<R>>,
             }),
         ])
       ),
@@ -630,6 +642,8 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
   const { name = "", get } = init
 
   let filterDeps: any = {}
+
+  let isResolving = false
 
   const useFilterGet = () => {
     let depsValues: any = {}
@@ -780,19 +794,23 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         }
 
         try {
-          const tm = setTimeout(async () => {
-            const newValue =
-              e.storeName in filterDeps[`${prefix}-`] ||
-              !("addEventListener" in window)
-                ? await get(getObject)
-                : defaultFiltersValues[$filterKey]
+          if (!isResolving) {
+            isResolving = true
+            const tm = setTimeout(async () => {
+              const newValue =
+                e.storeName in filterDeps[`${prefix}-`] ||
+                e.storeName in readFilters
+                  ? await get(getObject)
+                  : defaultFiltersValues[$filterKey]
 
-            defaultFiltersValues[$filterKey] = newValue
-            notifyOtherFilters(hookCall, newValue)
+              defaultFiltersValues[$filterKey] = newValue
+              notifyOtherFilters(hookCall, newValue)
 
-            setFilterValue(newValue)
-            clearTimeout(tm)
-          }, 0)
+              setFilterValue(newValue)
+              isResolving = false
+              clearTimeout(tm)
+            }, 0)
+          }
         } catch (err) {}
       }
     }
