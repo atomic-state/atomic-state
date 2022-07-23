@@ -643,7 +643,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
   let filterDeps: any = {}
 
-  let isResolving = false
+  let $resolving: any = {}
 
   const useFilterGet = () => {
     let depsValues: any = {}
@@ -794,8 +794,8 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         }
 
         try {
-          if (!isResolving) {
-            isResolving = true
+          if (!$resolving[$filterKey]) {
+            $resolving[$filterKey] = true
             const tm = setTimeout(async () => {
               const newValue =
                 e.storeName in filterDeps[`${prefix}-`] ||
@@ -807,7 +807,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
               notifyOtherFilters(hookCall, newValue)
 
               setFilterValue(newValue)
-              isResolving = false
+              $resolving[$filterKey] = false
               clearTimeout(tm)
             }, 0)
           }

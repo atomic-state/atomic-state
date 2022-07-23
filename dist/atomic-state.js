@@ -504,7 +504,7 @@
   function filter(init) {
     const { name = "", get } = init
     let filterDeps = {}
-    let isResolving = false
+    let $resolving = {}
     const useFilterGet = () => {
       let depsValues = {}
       let readFilters = {}
@@ -643,8 +643,8 @@
             depsValues[e.storeName] = e.payload
           }
           try {
-            if (!isResolving) {
-              isResolving = true
+            if (!$resolving[$filterKey]) {
+              $resolving[$filterKey] = true
               const tm = setTimeout(async () => {
                 const newValue =
                   e.storeName in filterDeps[`${prefix}-`] ||
@@ -656,7 +656,7 @@
                 notifyOtherFilters(hookCall, newValue)
 
                 setFilterValue(newValue)
-                isResolving = false
+                $resolving[$filterKey] = false
                 clearTimeout(tm)
               }, 0)
             }
