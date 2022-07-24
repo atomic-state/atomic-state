@@ -105,6 +105,7 @@
     )
   }
   const resolvedAtoms = {}
+  const persistenceLoaded = {}
   function useAtomCreate(init) {
     const {
       effects = [],
@@ -283,16 +284,12 @@
           } finally {
             if (!willCancel) {
               defaultAtomsValues[$atomKey] = newValue
+              if (persistence) {
+                localStorage.setItem($atomKey, JSON.stringify(newValue))
+              }
               try {
                 if (shouldNotifyOtherSubscribers) {
-                  if (isActionUpdate) {
-                    const tm = setTimeout(() => {
-                      notify($atomKey, hookCall, newValue)
-                      clearTimeout(tm)
-                    }, 0)
-                  } else {
-                    notify($atomKey, hookCall, newValue)
-                  }
+                  notify($atomKey, hookCall, newValue)
                 }
               } finally {
                 // Finally update state
@@ -343,6 +340,7 @@
     }, [init.name])
     useEffect(() => {
       async function loadPersistence() {
+        persistenceLoaded[$atomKey] = true
         if (typeof vIfPersistence !== "undefined") {
           if (!hydrated.current) {
             const tm1 = setTimeout(async () => {
@@ -370,7 +368,9 @@
           }
         }
       }
-      loadPersistence()
+      if (!persistenceLoaded[$atomKey]) {
+        loadPersistence()
+      }
     }, [vIfPersistence, updateState, hydrated])
     useEffect(() => {
       async function getPromiseInitialValue() {
@@ -465,8 +465,7 @@
               actions[key]({
                 args,
                 state,
-                dispatchSync: updateState,
-                dispatch: (e) => updateState(e, true),
+                dispatch: updateState,
               }),
           ])
         ),

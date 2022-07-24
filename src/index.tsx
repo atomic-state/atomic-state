@@ -56,10 +56,6 @@ export type Atom<T = any, ActionArgs = any> = {
       args: ActionArgs[E]
       state: T
       dispatch: Dispatch<SetStateAction<T>>
-      /**
-       * Dispatch a state update synchronously
-       */
-      dispatchSync: Dispatch<SetStateAction<T>>
     }) => void
   }
   effects?: ((s: {
@@ -197,6 +193,7 @@ export const AtomicState: React.FC<{
 
 const resolvedAtoms: any = {}
 
+const persistenceLoaded: any = {}
 function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const {
     effects = [],
@@ -308,7 +305,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const hydrated = useRef(false)
 
   const updateState: Dispatch<SetStateAction<R>> = useCallback(
-    (v: any, isActionUpdate: any) => {
+    (v: any) => {
       let willCancel = false
       let newValue: any
       let hasChanded
@@ -396,16 +393,12 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         } finally {
           if (!willCancel) {
             defaultAtomsValues[$atomKey] = newValue
+            if (persistence) {
+              localStorage.setItem($atomKey, JSON.stringify(newValue))
+            }
             try {
               if (shouldNotifyOtherSubscribers) {
-                if (isActionUpdate) {
-                  const tm = setTimeout(() => {
-                    notify($atomKey, hookCall, newValue)
-                    clearTimeout(tm)
-                  }, 0)
-                } else {
-                  notify($atomKey, hookCall, newValue)
-                }
+                notify($atomKey, hookCall, newValue)
               }
             } finally {
               // Finally update state
@@ -458,6 +451,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   useEffect(() => {
     async function loadPersistence() {
+      persistenceLoaded[$atomKey] = true
       if (typeof vIfPersistence !== "undefined") {
         if (!hydrated.current) {
           const tm1 = setTimeout(async () => {
@@ -486,8 +480,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         }
       }
     }
-    loadPersistence()
-  }, [vIfPersistence, updateState, hydrated])
+    if (!persistenceLoaded[$atomKey]) {
+      loadPersistence()
+    }
+  }, [vIfPersistence, updateState, hydrated, $atomKey])
 
   useEffect(() => {
     async function getPromiseInitialValue() {
@@ -587,9 +583,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
             (actions as any)[key]({
               args,
               state,
-              dispatchSync: updateState as Dispatch<SetStateAction<R>>,
-              dispatch: (e: any) =>
-                (updateState as any)(e, true) as Dispatch<SetStateAction<R>>,
+              dispatch: updateState as Dispatch<SetStateAction<R>>,
             }),
         ])
       ),
