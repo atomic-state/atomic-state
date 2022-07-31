@@ -70,7 +70,7 @@ export type Atom<T = any, ActionArgs = any> = {
 }
 
 export type ActionsObjectType<ArgsTypes = any> = {
-  [E in keyof ArgsTypes]: (args?: ArgsTypes[E]) => any
+  [E in keyof ArgsTypes]: <Returns = any>(args?: ArgsTypes[E]) => Returns
 }
 
 export type useAtomType<R, ActionsArgs = any> = () => (
