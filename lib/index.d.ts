@@ -57,7 +57,7 @@ export declare type Atom<T = any, ActionArgs = any> = {
     }) => void)[];
 };
 export declare type ActionsObjectType<ArgsTypes = any> = {
-    [E in keyof ArgsTypes]: (args?: ArgsTypes[E]) => any;
+    [E in keyof ArgsTypes]: <Returns = any>(args?: ArgsTypes[E]) => Returns;
 };
 export declare type useAtomType<R, ActionsArgs = any> = () => (R | Dispatch<SetStateAction<R>> | ActionsObjectType<ActionsArgs>)[];
 /**
