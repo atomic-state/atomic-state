@@ -19,6 +19,12 @@ import React, {
 
 import { EventEmitter as Observable } from "events"
 
+export type ActionType<Args, T = any> = (args: {
+  args: Args
+  state: T
+  dispatch: Dispatch<SetStateAction<T>>
+}) => void
+
 /**
  * Atom type
  */
@@ -52,11 +58,7 @@ export type Atom<T = any, ActionArgs = any> = {
    */
   hydration?: boolean
   actions?: {
-    [E in keyof ActionArgs]: (st: {
-      args: ActionArgs[E]
-      state: T
-      dispatch: Dispatch<SetStateAction<T>>
-    }) => void
+    [E in keyof ActionArgs]: ActionType<ActionArgs[E], T>
   }
   effects?: ((s: {
     previous: T
