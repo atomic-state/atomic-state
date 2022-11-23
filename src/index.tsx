@@ -760,7 +760,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     const initialValue = getInitialValue()
 
-    const [filterValue, setFilterValue] = useState<R>(
+    const [filterValue, setFilterValue] = useState<R>(() =>
       initialValue instanceof Promise || typeof initialValue === "undefined"
         ? init.default
         : (() => {
@@ -814,8 +814,11 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
               defaultFiltersValues[$filterKey] = newValue
               notifyOtherFilters(hookCall, newValue)
-
-              setFilterValue(newValue)
+              if (typeof newValue === "function") {
+                setFilterValue(() => newValue)
+              } else {
+                setFilterValue(newValue)
+              }
               $resolving[$filterKey] = false
               clearTimeout(tm)
             }, 0)
@@ -863,7 +866,11 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     async function updateValueFromObservableChange(e: any) {
       const { storeName, payload } = e
       if (hookCall !== e.hookCall) {
-        setFilterValue(payload)
+        if (typeof payload === "function") {
+          setFilterValue(() => payload)
+        } else {
+          setFilterValue(payload)
+        }
       }
     }
 

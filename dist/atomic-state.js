@@ -612,7 +612,7 @@
         }
       }
       const initialValue = getInitialValue()
-      const [filterValue, setFilterValue] = useState(
+      const [filterValue, setFilterValue] = useState(() =>
         initialValue instanceof Promise || typeof initialValue === "undefined"
           ? init.default
           : (() => {
@@ -663,8 +663,11 @@
 
                 defaultFiltersValues[$filterKey] = newValue
                 notifyOtherFilters(hookCall, newValue)
-
-                setFilterValue(newValue)
+                if (typeof newValue === "function") {
+                  setFilterValue(() => newValue)
+                } else {
+                  setFilterValue(newValue)
+                }
                 $resolving[$filterKey] = false
                 clearTimeout(tm)
               }, 0)
@@ -711,7 +714,11 @@
       async function updateValueFromObservableChange(e) {
         const { storeName, payload } = e
         if (hookCall !== e.hookCall) {
-          setFilterValue(payload)
+          if (typeof payload === "function") {
+            setFilterValue(() => payload)
+          } else {
+            setFilterValue(payload)
+          }
         }
       }
       useEffect(() => {
