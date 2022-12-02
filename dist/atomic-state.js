@@ -120,6 +120,55 @@
   }
   const resolvedAtoms = {}
   const persistenceLoaded = {}
+
+  /**
+   * Take a snapshot of all atoms' and filters' values.
+   * You can pass a string with the `prefix` you used in the `AtomicState` root component
+   * if you want only atoms and filters using that prefix.
+   */
+  function takeSnapshot(storeName) {
+    let stores = {}
+
+    for (let atomKey in defaultAtomsValues) {
+      const [prefixName, atomName] = atomKey.split("-")
+      if (typeof stores[prefixName] === "undefined") {
+        stores[prefixName] = {
+          filters: {},
+          atoms: {},
+        }
+      }
+      stores[prefixName].atoms[atomName] = defaultAtomsValues[atomKey]
+    }
+
+    for (let filterKey in defaultFiltersValues) {
+      const [prefixName, filterName] = filterKey.split("-")
+      if (typeof stores[prefixName] === "undefined") {
+        stores[prefixName] = {
+          filters: {},
+          atoms: {},
+        }
+      }
+      stores[prefixName].filters[filterName] = defaultFiltersValues[filterKey]
+    }
+    return typeof storeName === "undefined" ? stores : stores[storeName] || {}
+  }
+
+  /**
+   * Get the current value of an atom. You can pass a specific prefix as the second argument.
+   */
+  function getAtomValue(atomName, prefix = "store") {
+    const $atomKey = [prefix, atomName].join("-")
+    return defaultAtomsValues[$atomKey]
+  }
+
+  /**
+   * Get the current value of a filter. You can pass a specific prefix as the second argument.
+   */
+  function getFilterValue(filterName, prefix = "store") {
+    const $filterKey = [prefix, filterName].join("-")
+    return defaultFiltersValues[$filterKey]
+  }
+
   function useAtomCreate(init) {
     const {
       effects = [],
@@ -310,7 +359,7 @@
           }
         }
       },
-      [hookCall, notify, runEffects, hydrated, state, init.name]
+      [hookCall, notify, runEffects, persistence, hydrated, state, init.name]
     )
     useEffect(() => {
       async function storageListener() {
@@ -449,6 +498,8 @@
             // Only remove from localStorage if persistence is false
             if (!persistence) {
               localStorage.removeItem($atomKey)
+            } else {
+              localStorage.setItem($atomKey, JSON.stringify(state))
             }
           }
         }
@@ -915,6 +966,9 @@
   window.useDispatch = useDispatch
   window.useActions = useActions
   window.AtomicState = AtomicState
+  window.takeSnapshot = takeSnapshot
+  window.getAtomValue = getAtomValue
+  window.getFilterValue = getFilterValue
   window.filter = filter
   window.useFilter = useFilter
   window.storage = storage

@@ -211,6 +211,55 @@ export const AtomicState: React.FC<{
 const resolvedAtoms: any = {}
 
 const persistenceLoaded: any = {}
+
+/**
+ * Take a snapshot of all atoms' and filters' values.
+ * You can pass a string with the `prefix` you used in the `AtomicState` root component
+ * if you want only atoms and filters using that prefix.
+ */
+export function takeSnapshot(storeName?: string) {
+  let stores: any = {}
+
+  for (let atomKey in defaultAtomsValues) {
+    const [prefixName, atomName] = atomKey.split("-")
+    if (typeof stores[prefixName] === "undefined") {
+      stores[prefixName] = {
+        filters: {},
+        atoms: {},
+      }
+    }
+    stores[prefixName].atoms[atomName] = defaultAtomsValues[atomKey]
+  }
+
+  for (let filterKey in defaultFiltersValues) {
+    const [prefixName, filterName] = filterKey.split("-")
+    if (typeof stores[prefixName] === "undefined") {
+      stores[prefixName] = {
+        filters: {},
+        atoms: {},
+      }
+    }
+    stores[prefixName].filters[filterName] = defaultFiltersValues[filterKey]
+  }
+  return typeof storeName === "undefined" ? stores : stores[storeName] || {}
+}
+
+/**
+ * Get the current value of an atom. You can pass a specific prefix as the second argument.
+ */
+export function getAtomValue<T = any>(atomName: string, prefix = "store") {
+  const $atomKey = [prefix, atomName].join("-")
+  return defaultAtomsValues[$atomKey]
+}
+
+/**
+ * Get the current value of a filter. You can pass a specific prefix as the second argument.
+ */
+export function getFilterValue<T = any>(filterName: string, prefix = "store") {
+  const $filterKey = [prefix, filterName].join("-")
+  return defaultFiltersValues[$filterKey]
+}
+
 function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const {
     effects = [],
@@ -423,7 +472,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         }
       }
     },
-    [hookCall, notify, runEffects, hydrated, state, init.name]
+    [hookCall, notify, runEffects, persistence, hydrated, state, init.name]
   ) as Dispatch<SetStateAction<R>>
 
   useEffect(() => {
@@ -568,6 +617,8 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           // Only remove from localStorage if persistence is false
           if (!persistence) {
             localStorage.removeItem($atomKey)
+          } else {
+            localStorage.setItem($atomKey, JSON.stringify(state))
           }
         }
       }
