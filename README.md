@@ -28,11 +28,11 @@ Or with yarn:
 yarn add atomic-state
 ```
 
-### Production builds
+### For production apps
 
 
 ```html
-<script src="https://unpkg.com/atomic-state@2.1.3/dist/atomic-state.min.js"></script>
+<script src="https://unpkg.com/atomic-state@2.1.4/dist/atomic-state.min.js"></script>
 ```
 
 [Getting started](https://atomic-state.org/docs/intro)

@@ -100,6 +100,20 @@ export declare const AtomicState: React.FC<{
     prefix?: string;
 }>;
 /**
+ * Take a snapshot of all atoms' and filters' values.
+ * You can pass a string with the `prefix` you used in the `AtomicState` root component
+ * if you want only atoms and filters using that prefix.
+ */
+export declare function takeSnapshot(storeName?: string): any;
+/**
+ * Get the current value of an atom. You can pass a specific prefix as the second argument.
+ */
+export declare function getAtomValue<T = any>(atomName: string, prefix?: string): any;
+/**
+ * Get the current value of a filter. You can pass a specific prefix as the second argument.
+ */
+export declare function getFilterValue<T = any>(filterName: string, prefix?: string): any;
+/**
  * Creates an atom containing state
  */
 export declare function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>): Atom<R, ActionsArgs>;
