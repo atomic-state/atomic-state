@@ -57,6 +57,7 @@
   }
   const atomObservables = {}
   const atomsInitializeObjects = {}
+  const filtersInitializeObjects = {}
   const defaultAtomsValues = {}
   const defaultAtomsInAtomic = {}
   const defaultFiltersInAtomic = {}
@@ -67,6 +68,17 @@
   const atomicStateContext = createContext({
     prefix: "store",
   })
+
+  function AtomInitialize({ atm }) {
+    const used = useAtom(atm)
+    return null
+  }
+
+  function FilterInitialize({ filt }) {
+    const used = useFilter(filt)
+    return null
+  }
+
   const AtomicState = ({ children, atoms, filters, prefix = "store" }) => {
     const atomicContext = useContext(atomicStateContext)
     let atomicPrefix =
@@ -108,6 +120,19 @@
       []
     )
 
+    const createdFilters = Object.values(filtersInitializeObjects)
+
+    const initializedFilters = useMemo(
+      () =>
+        createdFilters.map((flt) => {
+          return React.createElement(FilterInitialize, {
+            key: flt?.name + prefix,
+            filt: flt,
+          })
+        }),
+      []
+    )
+
     return React.createElement(
       atomicStateContext.Provider,
       {
@@ -116,6 +141,7 @@
         },
       },
       initialized,
+      initializedFilters,
       children
     )
   }
@@ -587,6 +613,9 @@
   const subscribedFilters = {}
   function filter(init) {
     const { name = "", get } = init
+    if (!filtersInitializeObjects[init?.name]) {
+      filtersInitializeObjects[init?.name] = init
+    }
     let filterDeps = {}
     let $resolving = {}
     const useFilterGet = () => {

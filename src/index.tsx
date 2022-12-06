@@ -121,6 +121,7 @@ const atomObservables: {
 
 const defaultAtomsValues: any = {}
 const atomsInitializeObjects: any = {}
+const filtersInitializeObjects: any = {}
 const defaultAtomsInAtomic: any = {}
 const defaultFiltersInAtomic: any = {}
 const usedKeys: any = {}
@@ -138,6 +139,11 @@ const atomicStateContext = createContext<{
 
 function AtomInitialize({ atm }: any) {
   const used = useAtom(atm)
+  return null
+}
+
+function FilterInitialize({ filt }: any) {
+  const used = useFilter(filt)
   return null
 }
 
@@ -198,6 +204,16 @@ export const AtomicState: React.FC<{
     []
   )
 
+  const createdFilters = Object.values(filtersInitializeObjects) as any
+
+  const initializedFilters = useMemo(
+    () =>
+      createdFilters.map((flt: any) => {
+        return <FilterInitialize key={flt?.name + prefix} filt={flt} />
+      }),
+    []
+  )
+
   return (
     <atomicStateContext.Provider
       value={{
@@ -205,6 +221,7 @@ export const AtomicState: React.FC<{
       }}
     >
       {initialized}
+      {initializedFilters}
       {children}
     </atomicStateContext.Provider>
   )
@@ -726,6 +743,10 @@ const subscribedFilters: any = {}
 
 export function filter<R>(init: Filter<R | Promise<R>>) {
   const { name = "", get } = init
+
+  if (!filtersInitializeObjects[init?.name]) {
+    filtersInitializeObjects[init?.name] = init
+  }
 
   let filterDeps: any = {}
 
