@@ -19,11 +19,13 @@ import React, {
 
 import { EventEmitter as Observable } from "events"
 
-export type ActionType<Args, T = any> = (args: {
-  args: Args
-  state: T
-  dispatch: Dispatch<SetStateAction<T>>
-}) => void
+export type ActionType<Args, T = any> = (
+  args: {
+    args: Args
+    state: T
+    dispatch: Dispatch<SetStateAction<T>>
+  } & FilterGet
+) => void
 
 /**
  * Atom type
@@ -379,7 +381,8 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       function cancelUpdate() {
         willCancel = true
       }
-      newValue = typeof v === "function" ? (v as any)(state) : v
+      newValue =
+        typeof v === "function" ? (v as any)(defaultAtomsValues[$atomKey]) : v
       hasChanded = (() => {
         try {
           return (
@@ -472,7 +475,16 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         }
       }
     },
-    [hookCall, notify, runEffects, persistence, hydrated, state, init.name]
+    [
+      hookCall,
+      notify,
+      runEffects,
+      $atomKey,
+      persistence,
+      hydrated,
+      state,
+      init.name,
+    ]
   ) as Dispatch<SetStateAction<R>>
 
   useEffect(() => {
@@ -626,8 +638,26 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     updateStorage()
   }, [init.name, persistence, state])
 
+  const atomGet = useCallback(
+    function <R>($atom: useAtomType<R> | Atom<R, any>): R {
+      const $key = [prefix, ($atom as any)["atom-name"]].join("-")
+      const $atomValue = defaultAtomsValues[$key]
+      return $atomValue
+    },
+    [prefix]
+  )
+
+  const filterRead = useCallback(
+    function <R>($filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R {
+      const $key = [prefix, ($filter as any)["filter-name"]].join("-")
+      const $filterValue = defaultFiltersValues[$key]
+      return $filterValue
+    },
+    [prefix]
+  )
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const actions = useMemo(() => init.actions || {}, [])
+  const actions = useMemo(() => init.actions || {}, [init.actions])
   const __actions = useMemo(
     () =>
       Object.fromEntries(
@@ -638,6 +668,8 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
               args,
               state,
               dispatch: updateState as Dispatch<SetStateAction<R>>,
+              get: atomGet,
+              read: filterRead,
             }),
         ])
       ),

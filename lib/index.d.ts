@@ -11,7 +11,7 @@ export declare type ActionType<Args, T = any> = (args: {
     args: Args;
     state: T;
     dispatch: Dispatch<SetStateAction<T>>;
-}) => void;
+} & FilterGet) => void;
 /**
  * Atom type
  */
