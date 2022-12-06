@@ -56,6 +56,7 @@
     }
   }
   const atomObservables = {}
+  const atomsInitializeObjects = {}
   const defaultAtomsValues = {}
   const defaultAtomsInAtomic = {}
   const defaultFiltersInAtomic = {}
@@ -269,7 +270,7 @@
         function cancelUpdate() {
           willCancel = true
         }
-        newValue = typeof v === "function" ? v(state) : v
+        newValue = typeof v === "function" ? v(defaultAtomsValues[$atomKey]) : v
         hasChanded = (() => {
           try {
             return (
@@ -359,7 +360,16 @@
           }
         }
       },
-      [hookCall, notify, runEffects, persistence, hydrated, state, init.name]
+      [
+        hookCall,
+        notify,
+        runEffects,
+        $atomKey,
+        persistence,
+        hydrated,
+        state,
+        init.name,
+      ]
     )
     useEffect(() => {
       async function storageListener() {
@@ -506,8 +516,27 @@
       }
       updateStorage()
     }, [init.name, persistence, state])
+
+    const atomGet = useCallback(
+      function ($atom) {
+        const $key = [prefix, $atom["atom-name"]].join("-")
+        const $atomValue = defaultAtomsValues[$key]
+        return $atomValue
+      },
+      [prefix]
+    )
+
+    const filterRead = useCallback(
+      function ($filter) {
+        const $key = [prefix, $filter["filter-name"]].join("-")
+        const $filterValue = defaultFiltersValues[$key]
+        return $filterValue
+      },
+      [prefix]
+    )
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const actions = useMemo(() => init.actions || {}, [])
+    const actions = useMemo(() => init.actions || {}, [init.actions])
     const __actions = useMemo(
       () =>
         Object.fromEntries(
@@ -518,6 +547,8 @@
                 args,
                 state,
                 dispatch: updateState,
+                get: atomGet,
+                read: filterRead,
               }),
           ])
         ),
