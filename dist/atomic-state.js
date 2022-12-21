@@ -141,23 +141,19 @@
       []
     )
     return React.createElement(
-      React.StrictMode,
-      null,
-      React.createElement(
-        atomicStateContext.Provider,
-        {
-          value: {
-            prefix: atomicPrefix,
-          },
+      atomicStateContext.Provider,
+      {
+        value: {
+          prefix: atomicPrefix,
         },
-        React.createElement(
-          React.Fragment,
-          null,
-          initialized,
-          initializedFilters
-        ),
-        children
-      )
+      },
+      React.createElement(
+        React.Fragment,
+        null,
+        initialized,
+        initializedFilters
+      ),
+      children
     )
   }
   const resolvedAtoms = {}

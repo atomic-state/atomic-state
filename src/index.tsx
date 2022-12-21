@@ -238,20 +238,18 @@ export const AtomicState: React.FC<{
   )
 
   return (
-    <React.StrictMode>
-      <atomicStateContext.Provider
-        value={{
-          prefix: atomicPrefix,
-        }}
-      >
-        <>
-          {initialized}
-          {initializedFilters}
-        </>
+    <atomicStateContext.Provider
+      value={{
+        prefix: atomicPrefix,
+      }}
+    >
+      <>
+        {initialized}
+        {initializedFilters}
+      </>
 
-        {children}
-      </atomicStateContext.Provider>
-    </React.StrictMode>
+      {children}
+    </atomicStateContext.Provider>
   )
 }
 
