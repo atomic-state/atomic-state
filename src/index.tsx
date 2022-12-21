@@ -216,7 +216,7 @@ export const AtomicState: React.FC<{
       createdAtoms.map((atm: any) => {
         return (
           <React.StrictMode key={atm?.name + prefix + thisId}>
-            <AtomInitialize atm={atm} key={atm?.name + prefix + thisId} />
+            <AtomInitialize atm={atm} />
           </React.StrictMode>
         )
       }),
