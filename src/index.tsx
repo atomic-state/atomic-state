@@ -330,6 +330,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const isDefined = _isDefined(init.default)
 
+  const initDef = _isDefined(defaultAtomsValues[$atomKey])
+    ? defaultAtomsValues[$atomKey]
+    : init.default
+
   const initialValue = (function getInitialValue() {
     const isFunction =
       !_isDefined(defaultAtomsValues[$atomKey]) && _isFunction(init.default)
@@ -347,10 +351,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         ? !isPromiseValue
           ? _isDefined(initialIfFnOrPromise)
             ? initialIfFnOrPromise
-            : init.default
+            : initDef
           : init.default
-        : defaultAtomsValues[$atomKey]
-      : defaultAtomsValues[$atomKey]
+        : initDef
+      : initDef
 
     try {
       if (persistence) {
@@ -384,7 +388,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
               : await localStorage.getItem($atomKey)
           return typeof localStorage === "undefined"
             ? init.default
-            : JSON.parse(storageItem as any) || init.default
+            : JSON.parse(storageItem as any) || initDef
         })()
       } catch (err) {
         return initialValue
@@ -439,10 +443,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           if (_isFunction(defaultAtomsValues[$atomKey])) {
             return true
           }
-          if (
-            jsonEquality(newValue, init.default) &&
-            !resolvedAtoms[$atomKey]
-          ) {
+          if (jsonEquality(newValue, initDef) && !resolvedAtoms[$atomKey]) {
             resolvedAtoms[$atomKey] = true
             return true
           } else {
@@ -498,17 +499,23 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           setRunEffects(true)
         } finally {
           if (!willCancel) {
-            defaultAtomsValues[$atomKey] = newValue
-            if (persistence) {
-              localStorage.setItem($atomKey, JSON.stringify(newValue))
+            if (_isDefined(newValue)) {
+              defaultAtomsValues[$atomKey] = newValue
+              if (persistence) {
+                localStorage.setItem($atomKey, JSON.stringify(newValue))
+              }
             }
             try {
               if (shouldNotifyOtherSubscribers) {
-                notify($atomKey, hookCall, newValue)
+                if (_isDefined(newValue)) {
+                  notify($atomKey, hookCall, newValue)
+                }
               }
             } finally {
               // Finally update state
-              setState(newValue)
+              if (_isDefined(newValue)) {
+                setState(newValue)
+              }
             }
           }
         }
@@ -634,7 +641,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       }
     }
     getPromiseInitialValue()
-  }, [state, init.default, updateState, init.name, hookCall])
+  }, [state, initDef, updateState, init.name, hookCall])
 
   useEffect(() => {
     return () => {
@@ -645,7 +652,9 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   useEffect(() => {
     const handler = async (e: any) => {
       if (e.hookCall !== hookCall) {
-        setState(e.payload)
+        if (_isDefined(e.payload)) {
+          setState(e.payload)
+        }
       }
     }
 
@@ -666,7 +675,9 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           if (!persistence) {
             localStorage.removeItem($atomKey)
           } else {
-            localStorage.setItem($atomKey, JSON.stringify(state))
+            if (_isDefined(state)) {
+              localStorage.setItem($atomKey, JSON.stringify(state))
+            }
           }
         }
       }
