@@ -74,7 +74,7 @@ export declare type FilterGet = {
 export declare type Filter<T = any> = {
     name: string;
     default?: T;
-    get(c: FilterGet): T;
+    get(c: FilterGet): T | Promise<T>;
 };
 export declare function createObserver(): {
     observer: Observable;
@@ -118,11 +118,7 @@ export declare function getFilterValue<T = any>(filterName: string, prefix?: str
  */
 export declare function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>): Atom<R, ActionsArgs>;
 export declare const createAtom: typeof atom;
-export declare function filter<R>(init: Filter<R | Promise<R>>): {
-    (): R;
-    "filter-name": string;
-    "init-object": Filter<R | Promise<R>>;
-};
+export declare function filter<R>(init: Filter<R | Promise<R>>): Filter<R>;
 export declare function useFilter<T>(f: (() => T | Promise<T>) | Filter<T | Promise<T>>): T;
 /**
  * Get an atom's value and state setter
