@@ -60,7 +60,7 @@ export type Atom<T = any, ActionArgs = any> = {
    */
   hydration?: boolean
   actions?: {
-    [E in keyof ActionArgs]: ActionType<ActionArgs[E], T>
+    [E in keyof Partial<ActionArgs>]: ActionType<ActionArgs[E], T>
   }
   effects?: ((s: {
     previous: T
@@ -724,7 +724,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     [state]
   )
 
-  return [state, updateState, __actions as ActionsObjectType<ActionsArgs>]
+  return [
+    state,
+    updateState,
+    __actions as Required<ActionsObjectType<ActionsArgs>>,
+  ]
 }
 
 const ignoredAtomKeyWarnings: any = {}
@@ -1172,7 +1176,7 @@ export const useAtomDispatch = useDispatch
 export function useActions<R, ActionsArgs = any>(
   atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>
 ) {
-  return useAtom(atom)[2] as ActionsObjectType<ActionsArgs>
+  return useAtom(atom)[2] as Required<ActionsObjectType<ActionsArgs>>
 }
 export const useAtomActions = useActions
 
