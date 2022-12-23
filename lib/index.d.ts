@@ -45,7 +45,7 @@ export declare type Atom<T = any, ActionArgs = any> = {
      */
     hydration?: boolean;
     actions?: {
-        [E in keyof ActionArgs]: ActionType<ActionArgs[E], T>;
+        [E in keyof Partial<ActionArgs>]: ActionType<ActionArgs[E], T>;
     };
     effects?: ((s: {
         previous: T;
@@ -137,7 +137,7 @@ export declare const useAtomDispatch: typeof useDispatch;
 /**
  * Get the actions of the atom as reducers
  */
-export declare function useActions<R, ActionsArgs = any>(atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>): ActionsObjectType<ActionsArgs>;
+export declare function useActions<R, ActionsArgs = any>(atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>): Required<ActionsObjectType<ActionsArgs>>;
 export declare const useAtomActions: typeof useActions;
 /**
  * Get all localStorage items as an object (they will be JSON parsed). You can pass default values (which work with SSR) and a type argument
