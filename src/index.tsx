@@ -39,6 +39,12 @@ export type Atom<T = any, ActionArgs = any> = {
    */
   persist?: boolean
   /**
+   * The persistence provider (optional). It should have the `getItem`, `setItem` and `removeItem` methods.
+   *
+   * @default localStorage
+   */
+  persistenceProvider?: PersistenceStoreType
+  /**
    * If true, `persist` will keep the value in sync between tabs.
    * By default it's `true`
    */
@@ -131,10 +137,27 @@ const atomsEffectsCleanupFunctons: any = {}
 
 const pendingAtoms: any = {}
 
+export type PersistenceStoreType = {
+  getItem: (key: string) => any
+  setItem: (key: string, value: any) => void
+  removeItem: (key: string) => void
+}
+
+const defaultPersistenceProvider =
+  typeof localStorage !== "undefined"
+    ? localStorage
+    : {
+        getItem() {},
+        setItem() {},
+        removeItem() {},
+      }
+
 const atomicStateContext = createContext<{
   prefix: string
+  persistenceProvider: PersistenceStoreType
 }>({
   prefix: "store",
+  persistenceProvider: defaultPersistenceProvider,
 })
 
 function AtomInitialize({ atm }: any) {
@@ -163,8 +186,6 @@ function jsonEquality(target1: any, target2: any) {
   return JSON.stringify(target1) === JSON.stringify(target2)
 }
 
-let loadedStores: any = {}
-
 export const AtomicState: React.FC<{
   children: any
   /**
@@ -183,7 +204,19 @@ export const AtomicState: React.FC<{
    * The prefix added to atoms inside this component
    */
   prefix?: string
-}> = ({ children, atoms, filters, prefix = "store" }) => {
+  /**
+   * The persistence provider (optional). It should have the `getItem`, `setItem` and `removeItem` methods.
+   *
+   * @default localStorage
+   */
+  persistenceProvider?: PersistenceStoreType
+}> = ({
+  children,
+  atoms,
+  filters,
+  prefix = "store",
+  persistenceProvider = defaultPersistenceProvider,
+}) => {
   const atomicContext = useContext(atomicStateContext)
 
   let atomicPrefix = !_isDefined(prefix) ? atomicContext.prefix : prefix
@@ -241,6 +274,7 @@ export const AtomicState: React.FC<{
     <atomicStateContext.Provider
       value={{
         prefix: atomicPrefix,
+        persistenceProvider,
       }}
     >
       <>
@@ -306,15 +340,16 @@ export function getFilterValue<T = any>(filterName: string, prefix = "store") {
 }
 
 function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
+  const { prefix, persistenceProvider } = useContext(atomicStateContext)
+
   const {
     effects = [],
     persist,
     localStoragePersistence,
     sync = true,
     onSync = () => {},
+    persistenceProvider: $localStorage = persistenceProvider,
   } = init
-
-  const { prefix } = useContext(atomicStateContext)
 
   const $atomKey = prefix + "-" + init.name
 
@@ -383,10 +418,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       try {
         return (async () => {
           const storageItem =
-            typeof localStorage === "undefined"
+            typeof $localStorage === "undefined"
               ? init.default
-              : await localStorage.getItem($atomKey)
-          return typeof localStorage === "undefined"
+              : await $localStorage.getItem($atomKey)
+          return typeof $localStorage === "undefined"
             ? init.default
             : JSON.parse(storageItem as any) || initDef
         })()
@@ -502,7 +537,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
             if (_isDefined(newValue)) {
               defaultAtomsValues[$atomKey] = newValue
               if (persistence) {
-                localStorage.setItem($atomKey, JSON.stringify(newValue))
+                $localStorage.setItem($atomKey, JSON.stringify(newValue))
               }
             }
             try {
@@ -538,18 +573,13 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       if (typeof localStorage !== "undefined") {
         if (_isDefined(localStorage[$atomKey])) {
           try {
+            const newState = JSON.parse(localStorage[$atomKey])
             /**
              * We compare our atom saved in the storage with the current
              * atom value and only update our state if they are different
              *
              **/
-            if (
-              !jsonEquality(
-                localStorage[$atomKey],
-                defaultAtomsValues[$atomKey]
-              )
-            ) {
-              const newState = JSON.parse(localStorage[$atomKey])
+            if (!jsonEquality(newState, defaultAtomsValues[$atomKey])) {
               updateState(newState)
               await onSync(newState)
             }
@@ -559,19 +589,21 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     }
     if (persistence) {
       if (typeof window !== "undefined") {
-        const canListen = _isDefined(window.addEventListener)
-        if (canListen) {
-          if (sync) {
-            window.addEventListener("storage", storageListener)
-            return () => {
-              window.removeEventListener("storage", storageListener)
+        if ($localStorage === localStorage) {
+          const canListen = _isDefined(window.addEventListener)
+          if (canListen) {
+            if (sync) {
+              window.addEventListener("storage", storageListener)
+              return () => {
+                window.removeEventListener("storage", storageListener)
+              }
             }
           }
         }
       }
     }
     return () => {}
-  }, [init.name])
+  }, [init.name, persistence, $localStorage])
 
   useEffect(() => {
     async function loadPersistence() {
@@ -669,14 +701,16 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   useEffect(() => {
     async function updateStorage() {
       if (typeof localStorage !== "undefined") {
-        const storageItem = await localStorage.getItem($atomKey)
+        const storageItem = await $localStorage.getItem($atomKey)
         if (_isDefined(storageItem) || storageItem === null) {
           // Only remove from localStorage if persistence is false
           if (!persistence) {
-            localStorage.removeItem($atomKey)
+            $localStorage.removeItem($atomKey)
           } else {
             if (_isDefined(state)) {
-              localStorage.setItem($atomKey, JSON.stringify(state))
+              if (!jsonEquality(state, init.default)) {
+                $localStorage.setItem($atomKey, JSON.stringify(state))
+              }
             }
           }
         }
