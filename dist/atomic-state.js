@@ -65,8 +65,17 @@
   const defaultFiltersValues = {}
   const atomsEffectsCleanupFunctons = {}
   const pendingAtoms = {}
+  const defaultPersistenceProvider =
+    typeof localStorage !== "undefined"
+      ? localStorage
+      : {
+          getItem() {},
+          setItem() {},
+          removeItem() {},
+        }
   const atomicStateContext = createContext({
     prefix: "store",
+    persistenceProvider: defaultPersistenceProvider,
   })
   function AtomInitialize({ atm }) {
     useAtom(atm)
@@ -88,8 +97,14 @@
   function jsonEquality(target1, target2) {
     return JSON.stringify(target1) === JSON.stringify(target2)
   }
-  let loadedStores = {}
-  const AtomicState = ({ children, atoms, filters, prefix = "store" }) => {
+
+  const AtomicState = ({
+    children,
+    atoms,
+    filters,
+    prefix = "store",
+    persistenceProvider = defaultPersistenceProvider,
+  }) => {
     const atomicContext = useContext(atomicStateContext)
     let atomicPrefix = !_isDefined(prefix) ? atomicContext.prefix : prefix
     if (atoms) {
@@ -150,6 +165,7 @@
       {
         value: {
           prefix: atomicPrefix,
+          persistenceProvider,
         },
       },
       React.createElement(
@@ -207,14 +223,17 @@
     return defaultFiltersValues[$filterKey]
   }
   function useAtomCreate(init) {
+    const { prefix, persistenceProvider } = useContext(atomicStateContext)
+
     const {
       effects = [],
       persist,
       localStoragePersistence,
       sync = true,
       onSync = () => {},
+      persistenceProvider: $localStorage = persistenceProvider,
     } = init
-    const { prefix } = useContext(atomicStateContext)
+
     const $atomKey = prefix + "-" + init.name
     const [isLSReady, setIsLSReady] = useState(false)
     const persistence = localStoragePersistence || persist
@@ -267,15 +286,16 @@
         return initVal
       }
     })()
+
     const [vIfPersistence, setVIfPersistence] = useState(() => {
       if (persist) {
         try {
           return (async () => {
             const storageItem =
-              typeof localStorage === "undefined"
+              typeof $localStorage === "undefined"
                 ? init.default
-                : await localStorage.getItem($atomKey)
-            return typeof localStorage === "undefined"
+                : await $localStorage.getItem($atomKey)
+            return typeof $localStorage === "undefined"
               ? init.default
               : JSON.parse(storageItem) || initDef
           })()
@@ -284,6 +304,7 @@
         }
       } else return undefined
     })
+
     const [state, setState] = useState(
       (_isPromise(initialValue) || _isFunction(initialValue)) &&
         !_isDefined(defaultAtomsValues[$atomKey])
@@ -379,7 +400,7 @@
               if (_isDefined(newValue)) {
                 defaultAtomsValues[$atomKey] = newValue
                 if (persistence) {
-                  localStorage.setItem($atomKey, JSON.stringify(newValue))
+                  $localStorage.setItem($atomKey, JSON.stringify(newValue))
                 }
               }
               try {
@@ -409,23 +430,19 @@
         init.name,
       ]
     )
+
     useEffect(() => {
       async function storageListener() {
         if (typeof localStorage !== "undefined") {
           if (_isDefined(localStorage[$atomKey])) {
             try {
+              const newState = JSON.parse(localStorage[$atomKey])
               /**
                * We compare our atom saved in the storage with the current
                * atom value and only update our state if they are different
                *
                **/
-              if (
-                !jsonEquality(
-                  localStorage[$atomKey],
-                  defaultAtomsValues[$atomKey]
-                )
-              ) {
-                const newState = JSON.parse(localStorage[$atomKey])
+              if (!jsonEquality(newState, defaultAtomsValues[$atomKey])) {
                 updateState(newState)
                 await onSync(newState)
               }
@@ -435,19 +452,22 @@
       }
       if (persistence) {
         if (typeof window !== "undefined") {
-          const canListen = _isDefined(window.addEventListener)
-          if (canListen) {
-            if (sync) {
-              window.addEventListener("storage", storageListener)
-              return () => {
-                window.removeEventListener("storage", storageListener)
+          if ($localStorage === localStorage) {
+            const canListen = _isDefined(window.addEventListener)
+            if (canListen) {
+              if (sync) {
+                window.addEventListener("storage", storageListener)
+                return () => {
+                  window.removeEventListener("storage", storageListener)
+                }
               }
             }
           }
         }
       }
       return () => {}
-    }, [init.name])
+    }, [init.name, persistence, $localStorage])
+
     useEffect(() => {
       async function loadPersistence() {
         persistenceLoaded[$atomKey] = true
@@ -535,17 +555,20 @@
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [runEffects])
+
     useEffect(() => {
       async function updateStorage() {
         if (typeof localStorage !== "undefined") {
-          const storageItem = await localStorage.getItem($atomKey)
+          const storageItem = await $localStorage.getItem($atomKey)
           if (_isDefined(storageItem) || storageItem === null) {
             // Only remove from localStorage if persistence is false
             if (!persistence) {
-              localStorage.removeItem($atomKey)
+              $localStorage.removeItem($atomKey)
             } else {
               if (_isDefined(state)) {
-                localStorage.setItem($atomKey, JSON.stringify(state))
+                if (!jsonEquality(state, init.default)) {
+                  $localStorage.setItem($atomKey, JSON.stringify(state))
+                }
               }
             }
           }
@@ -553,6 +576,7 @@
       }
       updateStorage()
     }, [init.name, persistence, state])
+
     const atomGet = useCallback(
       function ($atom) {
         const $key = [prefix, $atom["atom-name"]].join("-")
