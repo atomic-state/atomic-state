@@ -289,18 +289,20 @@
 
     const [vIfPersistence, setVIfPersistence] = useState(() => {
       if (persist) {
-        try {
-          return (async () => {
-            const storageItem =
-              typeof $localStorage === "undefined"
+        if (typeof window !== "undefined") {
+          try {
+            return (async () => {
+              const storageItem =
+                typeof $localStorage === "undefined"
+                  ? init.default
+                  : await $localStorage.getItem($atomKey)
+              return typeof $localStorage === "undefined"
                 ? init.default
-                : await $localStorage.getItem($atomKey)
-            return typeof $localStorage === "undefined"
-              ? init.default
-              : JSON.parse(storageItem) || initDef
-          })()
-        } catch (err) {
-          return initialValue
+                : JSON.parse(storageItem) || initDef
+            })()
+          } catch (err) {
+            return initialValue
+          }
         }
       } else return undefined
     })
