@@ -24,6 +24,12 @@ export declare type Atom<T = any, ActionArgs = any> = {
      */
     persist?: boolean;
     /**
+     * The persistence provider (optional). It should have the `getItem`, `setItem` and `removeItem` methods.
+     *
+     * @default localStorage
+     */
+    persistenceProvider?: PersistenceStoreType;
+    /**
      * If true, `persist` will keep the value in sync between tabs.
      * By default it's `true`
      */
@@ -80,6 +86,11 @@ export declare function createObserver(): {
     observer: Observable;
     notify: (storeName: string, hookCall: string, payload: any) => void;
 };
+export declare type PersistenceStoreType = {
+    getItem: (key: string) => any;
+    setItem: (key: string, value: any) => void;
+    removeItem: (key: string) => void;
+};
 export declare const AtomicState: React.FC<{
     children: any;
     /**
@@ -98,6 +109,12 @@ export declare const AtomicState: React.FC<{
      * The prefix added to atoms inside this component
      */
     prefix?: string;
+    /**
+     * The persistence provider (optional). It should have the `getItem`, `setItem` and `removeItem` methods.
+     *
+     * @default localStorage
+     */
+    persistenceProvider?: PersistenceStoreType;
 }>;
 /**
  * Take a snapshot of all atoms' and filters' values.
