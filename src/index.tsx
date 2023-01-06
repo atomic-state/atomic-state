@@ -591,13 +591,15 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     }
     if (persistence) {
       if (typeof window !== "undefined") {
-        if ($localStorage === localStorage) {
-          const canListen = _isDefined(window.addEventListener)
-          if (canListen) {
-            if (sync) {
-              window.addEventListener("storage", storageListener)
-              return () => {
-                window.removeEventListener("storage", storageListener)
+        if (typeof localStorage !== "undefined") {
+          if ($localStorage === localStorage) {
+            const canListen = _isDefined(window.addEventListener)
+            if (canListen) {
+              if (sync) {
+                window.addEventListener("storage", storageListener)
+                return () => {
+                  window.removeEventListener("storage", storageListener)
+                }
               }
             }
           }
