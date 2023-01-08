@@ -1060,6 +1060,44 @@
     return useAtom(atom)[2]
   }
   const useAtomActions = useActions
+
+  /**
+   * Create a single provider hook with atoms
+   */
+  function atomProvider(states) {
+    function useThisAtom(name) {
+      const v = states[name]
+      const renderedAtom = useAtom(v)
+      const RR = renderedAtom
+      RR.value = renderedAtom[0]
+      RR.dispatch = renderedAtom[1]
+      RR.actions = renderedAtom[2]
+      return RR
+    }
+    useThisAtom.value = function useThisAtomValue(name) {
+      const v = states[name]
+      return useValue(v)
+    }
+    useThisAtom.dispatch = function useThisAtomDispatch(name) {
+      const v = states[name]
+      return useDispatch(v)
+    }
+    useThisAtom.actions = function useThisAtomActions(name) {
+      const v = states[name]
+      return useActions(v)
+    }
+    return useThisAtom
+  }
+  /**
+   * Create a single provider hook with filters
+   */
+  function filterProvider(states) {
+    return function useThisFilter(name) {
+      const v = states[name]
+      return useFilter(v)
+    }
+  }
+
   const storageOvservable = (() => {
     const emm = new Observable()
     return emm
@@ -1171,6 +1209,11 @@
     return value
   }
 
+  window.useAtomValue = useAtomValue
+  window.useAtomDispatch = useAtomDispatch
+  window.useAtomActions = useAtomActions
+  window.atomProvider = atomProvider
+  window.filterProvider = filterProvider
   window.atom = atom
   window.useAtom = useAtom
   window.useValue = useValue
