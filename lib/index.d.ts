@@ -157,6 +157,33 @@ export declare const useAtomDispatch: typeof useDispatch;
 export declare function useActions<R, ActionsArgs = any>(atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>): Required<ActionsObjectType<ActionsArgs>>;
 export declare const useAtomActions: typeof useActions;
 /**
+ * Create a single provider hook with atoms
+ */
+export declare function atomProvider<R>(states: {
+    [e in keyof R]: Atom<R[e]>;
+}): {
+    <E extends keyof R>(name: E): [R[E], (cb: R[E] | ((c: R[E]) => R[E])) => void, ActionsObjectType<{
+        [x: string]: any;
+    }>] & {
+        value: R[E];
+        dispatch: (cb: R[E] | ((c: R[E]) => R[E])) => void;
+        actions: ActionsObjectType<{
+            [x: string]: any;
+        }>;
+    };
+    value<E_1 extends keyof R>(name: E_1): R[E_1];
+    dispatch<E_2 extends keyof R>(name: E_2): (cb: R[E_2] | ((c: R[E_2]) => R[E_2])) => void;
+    actions<E_3 extends keyof R>(name: E_3): Required<ActionsObjectType<{
+        [x: string]: any;
+    }>>;
+};
+/**
+ * Create a single provider hook with filters
+ */
+export declare function filterProvider<R>(states: {
+    [e in keyof R]: Filter<R[e]>;
+}): <E extends keyof R>(name: E) => R[E];
+/**
  * Get all localStorage items as an object (they will be JSON parsed). You can pass default values (which work with SSR) and a type argument
  */
 export declare function useStorage<K = any>(defaults?: K): K;

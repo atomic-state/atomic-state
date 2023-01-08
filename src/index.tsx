@@ -1218,6 +1218,66 @@ export function useActions<R, ActionsArgs = any>(
 }
 export const useAtomActions = useActions
 
+/**
+ * Create a single provider hook with atoms
+ */
+export function atomProvider<R>(states: {
+  [e in keyof R]: Atom<R[e]>
+}) {
+  type K = keyof typeof states
+  function useThisAtom<E extends K>(name: E) {
+    const v = states[name]
+    const renderedAtom = useAtom(v)
+
+    const RR: typeof renderedAtom & {
+      value?: any
+      dispatch?: any
+      actions?: any
+    } = renderedAtom
+
+    RR.value = renderedAtom[0]
+    RR.dispatch = renderedAtom[1]
+    RR.actions = renderedAtom[2]
+
+    return RR as typeof renderedAtom & {
+      value: typeof RR[0]
+      dispatch: typeof RR[1]
+      actions: typeof RR[2]
+    }
+  }
+
+  useThisAtom.value = function useThisAtomValue<E extends K>(name: E) {
+    const v = states[name]
+    return useValue(v)
+  }
+
+  useThisAtom.dispatch = function useThisAtomDispatch<E extends K>(name: E) {
+    const v = states[name]
+    return useDispatch(v)
+  }
+
+  useThisAtom.actions = function useThisAtomActions<E extends K>(name: E) {
+    const v = states[name]
+    return useActions(v)
+  }
+
+  return useThisAtom
+}
+
+/**
+ * Create a single provider hook with filters
+ */
+export function filterProvider<R>(states: {
+  [e in keyof R]: Filter<R[e]>
+}) {
+  type K = keyof typeof states
+
+  return function useThisFilter<E extends K>(name: E) {
+    const v = states[name]
+    return useFilter(v)
+  }
+}
+
 const storageOvservable = (() => {
   const emm = new Observable()
   return emm
