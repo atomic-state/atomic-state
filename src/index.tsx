@@ -1,3 +1,4 @@
+"use client"
 /**  @license Atomic State
  * Copyright (c) Dany Beltran
  *
