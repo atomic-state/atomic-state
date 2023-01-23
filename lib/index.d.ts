@@ -1,10 +1,10 @@
+/// <reference types="node" />
 /**  @license Atomic State
  * Copyright (c) Dany Beltran
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-/// <reference types="node" />
 import React, { Dispatch, SetStateAction } from "react";
 import { EventEmitter as Observable } from "events";
 export declare type ActionType<Args, T = any> = (args: {
