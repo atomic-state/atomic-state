@@ -1,8 +1,8 @@
 {
   "name": "atomic-state",
-  "version": "2.2.7",
-  "description": "State managment library for React",
-  "main": "lib/index.js",
+  "version": "2.2.8",
+  "description": "Atomic State is a managment library for React",
+  "main": "dist/index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/atomic-state/atomic-state"
@@ -12,6 +12,7 @@
   },
   "keywords": [
     "State managment",
+    "atoms",
     "reactjs",
     "react",
     "localStorage persistence"
