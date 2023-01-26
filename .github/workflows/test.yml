@@ -1,5 +1,5 @@
 name: Tests with JEST
-on: [push,workflow_call,pull_request]
+on: [push, workflow_call, pull_request]
 jobs:
   test:
     name: Test on node ${{ matrix.node_version }} and ${{ matrix.os }}
@@ -17,4 +17,4 @@ jobs:
           node-version: ${{ matrix.node_version }}
           cache: "npm"
       - name: Testing
-        run: npm install && npm test
+        run: npm install && npm run compile && npm test
