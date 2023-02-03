@@ -1322,9 +1322,13 @@ export function useStorage<K = any>(defaults?: K): K {
   return keys
 }
 
+/**
+ * A sync wrapper around the `localStorage` API
+ */
+
 export const storage = {
   /**
-   * Set an item in localStorage. Its value will be serialized as JSON
+   * Set an item in `localStorage`. Its value will be serialized as JSON
    */
   set<T = any>(k: string, v: T) {
     if (typeof localStorage !== "undefined") {
@@ -1335,7 +1339,7 @@ export const storage = {
     }
   },
   /**
-   * Remove a localStorage item
+   * Remove a `localStorage` item
    */
   async remove(k: string) {
     if (typeof localStorage !== "undefined") {
@@ -1347,7 +1351,7 @@ export const storage = {
   },
 
   /**
-   * Get an item in localStorage. Its value will be JSON parsed. If it does not exist or
+   * Get an item in `localStorage`. Its value will be JSON parsed. If it does not exist or
    * is an invalid JSON format, the default value passed in the second argument will be returned
    */
   get<T = any>(k: string, def: T = null as unknown as T): T {
@@ -1361,6 +1365,56 @@ export const storage = {
       } else {
         try {
           return JSON.parse(localStorage[k])
+        } catch (err) {
+          return def as T
+        }
+      }
+    } else {
+      return def as T
+    }
+  },
+}
+
+/**
+ * A sync wrapper around the `sessionStorage` API
+ */
+export const session = {
+  /**
+   * Set an item in `sessionStorage`. Its value will be serialized as JSON
+   */
+  set<T = any>(k: string, v: T) {
+    if (typeof sessionStorage !== "undefined") {
+      if (_isFunction(sessionStorage.setItem)) {
+        sessionStorage.setItem(k, JSON.stringify(v))
+      }
+    }
+  },
+  /**
+   * Remove a `sessionStorage` item
+   */
+  async remove(k: string) {
+    if (typeof sessionStorage !== "undefined") {
+      if (_isFunction(sessionStorage.removeItem)) {
+        sessionStorage.removeItem(k)
+      }
+    }
+  },
+
+  /**
+   * Get an item in `sessionStorage`. Its value will be JSON parsed. If it does not exist or
+   * is an invalid JSON format, the default value passed in the second argument will be returned
+   */
+  get<T = any>(k: string, def: T = null as unknown as T): T {
+    if (typeof sessionStorage !== "undefined") {
+      if (_isFunction(sessionStorage.getItem)) {
+        try {
+          return JSON.parse(sessionStorage.getItem(k) as string)
+        } catch (err) {
+          return def as T
+        }
+      } else {
+        try {
+          return JSON.parse(sessionStorage[k])
         } catch (err) {
           return def as T
         }
