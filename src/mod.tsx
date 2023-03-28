@@ -1194,6 +1194,45 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
 }
 
 /**
+ * Creates a store with the `write`, `replace` and `reset` methods.
+ * It returns a hook that returns an array with the value and the actions
+ */
+export function createStore<R, A>(config: Partial<Atom<R, A>> = {}) {
+  const globalStoreState = atom<
+    Partial<R>,
+    {
+      push: (v: Required<R>) => Partial<R>
+      replace: (v: Required<R>) => R
+      reset: any
+    }
+  >({
+    ...(config as Omit<Atom<R>, "actions">),
+    actions: {
+      push({ dispatch, args }) {
+        dispatch((prev) => ({ ...prev, ...args(prev as Required<R>) }))
+      },
+      replace({ dispatch, args }) {
+        dispatch(args)
+      },
+      reset({ dispatch }) {
+        dispatch(config.default as R)
+      },
+      ...config.actions,
+    },
+  })
+
+  function useGlobalStore() {
+    const [value, , actions] = useAtom(globalStoreState)
+
+    return [value, actions] as [Required<typeof value>, typeof actions]
+  }
+
+  useGlobalStore.atom = globalStoreState
+
+  return useGlobalStore
+}
+
+/**
  * Get an atom's value
  */
 export function useValue<R>(atom: useAtomType<R> | Atom<R, any>) {

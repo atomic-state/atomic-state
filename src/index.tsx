@@ -27,4 +27,5 @@ export {
   useStorageItem,
   useValue,
   session,
+  createStore,
 } from "./mod"
