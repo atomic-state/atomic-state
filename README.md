@@ -14,7 +14,7 @@
 <img src="https://img.shields.io/github/stars/atomic-state/atomic-state.svg?style=social&label=Star" alt="Github Stars"/>
 </p>
 
-<p align="center"> Atomic State is a state managment library for React </p>
+<p align="center"> Atomic State is a state management library for React </p>
 
 Getting started:
 

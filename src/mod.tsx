@@ -1194,26 +1194,35 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
 }
 
 /**
- * Creates a store with the `write`, `replace` and `reset` methods.
+ * Creates a store with the `setPartialvalue`, `replace` and `setValue` methods.
  * It returns a hook that returns an array with the value and the actions
  */
 export function createStore<R, A>(config: Partial<Atom<R, A>> = {}) {
   const globalStoreState = atom<
     Partial<R>,
     {
-      push: (v: Required<R>) => Partial<R>
-      replace: (v: Required<R>) => R
+      setPartialvalue: Partial<R> | ((v: Required<R>) => Partial<R>)
+      setValue: R | ((v: Required<R>) => R)
       reset: any
     }
   >({
     ...(config as Omit<Atom<R>, "actions">),
     actions: {
-      push({ dispatch, args }) {
-        dispatch((prev) => ({ ...prev, ...args(prev as Required<R>) }))
+      /**
+       * Should be used only with object values
+       */
+      setPartialvalue({ dispatch, args }) {
+        if (typeof args === "function") {
+          dispatch((prev) => ({ ...prev, ...args(prev as Required<R>) }))
+        } else dispatch((prev) => ({ ...prev, ...args }))
       },
-      replace({ dispatch, args }) {
+      // Can be used with non-object values
+      setValue({ dispatch, args }) {
         dispatch(args)
       },
+      /**
+       * Reset the store state to the original value (Taken from `default`)
+       */
       reset({ dispatch }) {
         dispatch(config.default as R)
       },
@@ -1224,7 +1233,7 @@ export function createStore<R, A>(config: Partial<Atom<R, A>> = {}) {
   function useGlobalStore() {
     const [value, , actions] = useAtom(globalStoreState)
 
-    return [value, actions] as [Required<typeof value>, typeof actions]
+    return [value, actions] as const
   }
 
   useGlobalStore.atom = globalStoreState
@@ -1280,9 +1289,9 @@ export function atomProvider<R>(states: {
     RR.actions = renderedAtom[2]
 
     return RR as typeof renderedAtom & {
-      value: typeof RR[0]
-      dispatch: typeof RR[1]
-      actions: typeof RR[2]
+      value: (typeof RR)[0]
+      dispatch: (typeof RR)[1]
+      actions: (typeof RR)[2]
     }
   }
 
