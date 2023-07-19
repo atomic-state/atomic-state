@@ -27,5 +27,5 @@ export {
   useStorageItem,
   useValue,
   session,
-  createStore,
+  createAtomicHook,
 } from "./mod"
