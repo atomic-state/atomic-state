@@ -1,7 +1,7 @@
 {
   "name": "atomic-state",
-  "version": "2.3.2",
-  "description": "Atomic State is a managment library for React",
+  "version": "2.3.3",
+  "description": "Atomic State is a state management library for React",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -20,7 +20,7 @@
   ],
   "author": "Dany Beltran",
   "license": "MIT",
-  "homepage": "https://atomic-state.org/",
+  "homepage": "https://atomic-state.netlify.app/",
   "devDependencies": {
     "@babel/preset-env": "^7.15.8",
     "@babel/preset-react": "^7.14.5",
