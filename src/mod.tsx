@@ -1197,7 +1197,7 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
  * Creates a store with the `setPartialvalue`, `replace` and `setValue` methods.
  * It returns a hook that returns an array with the value and the actions
  */
-export function createAtomicHook<R, A>(config: Partial<Atom<R, A>> = {}) {
+export function createAtomicHook<R, A = any>(config: Partial<Atom<R, A>> = {}) {
   const globalStoreState = atom<
     Partial<R>,
     {
