@@ -861,9 +861,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       }
     }
 
-    const $$filterGet = (_atom: any) => {
-      const $atom = typeof _atom === "object" ? atom(_atom) : _atom
-
+    const $$filterGet = ($atom: any) => {
       subscribedFilters[$filterKey] = true
       if (!_isFunction($atom)) {
         const depsKey = [prefix, $atom.name].join("-")
