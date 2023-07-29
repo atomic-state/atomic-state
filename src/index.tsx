@@ -1,12 +1,16 @@
 export { AtomicState } from "./server"
 
-export {
+export type {
   ActionType,
   ActionsObjectType,
   Atom,
   Filter,
   FilterGet,
   PersistenceStoreType,
+  useAtomType,
+} from "./mod"
+
+export {
   atom,
   atomProvider,
   filter,
@@ -19,7 +23,6 @@ export {
   useAtom,
   useAtomActions,
   useAtomDispatch,
-  useAtomType,
   useAtomValue,
   useDispatch,
   useFilter,
