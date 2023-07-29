@@ -95,6 +95,9 @@ export type useAtomType<R, ActionsArgs = any> = () => (
  */
 export type FilterGet = {
   get<R>(atom: useAtomType<R> | Atom<R, any>): R
+  /**
+   * @deprecated Use the `get` method to subscribe to atoms or filters
+   */
   read<R>(filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R
 }
 
@@ -858,53 +861,64 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       }
     }
 
+    const $$filterGet = (_atom: any) => {
+      const $atom = typeof _atom === "object" ? atom(_atom) : _atom
+
+      subscribedFilters[$filterKey] = true
+      if (!_isFunction($atom)) {
+        const depsKey = [prefix, $atom.name].join("-")
+        filterDeps[`${prefix}-`][depsKey] = true
+        depsValues[depsKey] = defaultAtomsValues[depsKey]
+      } else {
+        const depsKey = [prefix, $atom?.["init-object"]?.name].join("-")
+        filterDeps[`${prefix}-`][depsKey] = true
+        depsValues[depsKey] = defaultAtomsValues[depsKey]
+      }
+
+      const __valuesKey = [prefix, atom.name].join("-")
+      const __valuesKeyNames = [prefix, $atom["atom-name"]].join("-")
+
+      return !_isFunction($atom)
+        ? !_isDefined(defaultAtomsValues[__valuesKey])
+          ? $atom.default
+          : defaultAtomsValues[__valuesKey]
+        : !_isDefined(defaultAtomsValues[__valuesKeyNames])
+        ? $atom["init-object"].default
+        : defaultAtomsValues[__valuesKeyNames]
+    }
+
+    const $$filterRead = ($filter: any) => {
+      subscribedFilters[$filterKey] = true
+      const __filtersKey = !_isFunction($filter)
+        ? [prefix, $filter.name].join("-")
+        : [prefix, $filter["filter-name"]].join("-")
+
+      if (!_isFunction($filter)) {
+        readFilters[__filtersKey] = true
+        readFiltersValues[__filtersKey] = defaultFiltersValues[__filtersKey]
+      } else {
+        // We want any re-renders from filters used to trigger a re-render of the current filter
+        readFilters[__filtersKey] = true
+        readFiltersValues[__filtersKey] = defaultFiltersValues[__filtersKey]
+      }
+
+      return !_isFunction($filter)
+        ? !_isDefined(defaultFiltersValues[__filtersKey])
+          ? $filter.default
+          : defaultFiltersValues[__filtersKey]
+        : !_isDefined(defaultFiltersValues[__filtersKey])
+        ? $filter["init-object"]?.default
+        : defaultFiltersValues[__filtersKey]
+    }
+
     const getObject = useMemo(
       () => ({
         get: ($atom: any) => {
-          subscribedFilters[$filterKey] = true
-          if (!_isFunction($atom)) {
-            const depsKey = [prefix, $atom.name].join("-")
-            filterDeps[`${prefix}-`][depsKey] = true
-            depsValues[depsKey] = defaultAtomsValues[depsKey]
-          } else {
-            const depsKey = [prefix, $atom?.["init-object"]?.name].join("-")
-            filterDeps[`${prefix}-`][depsKey] = true
-            depsValues[depsKey] = defaultAtomsValues[depsKey]
-          }
-
-          const __valuesKey = [prefix, atom.name].join("-")
-          const __valuesKeyNames = [prefix, $atom["atom-name"]].join("-")
-
-          return !_isFunction($atom)
-            ? !_isDefined(defaultAtomsValues[__valuesKey])
-              ? $atom.default
-              : defaultAtomsValues[__valuesKey]
-            : !_isDefined(defaultAtomsValues[__valuesKeyNames])
-            ? $atom["init-object"].default
-            : defaultAtomsValues[__valuesKeyNames]
+          const isFilter = typeof $atom?.["init-object"].get === "function"
+          return isFilter ? $$filterRead($atom) : $$filterGet($atom)
         },
         read: ($filter: any) => {
-          subscribedFilters[$filterKey] = true
-          const __filtersKey = !_isFunction($filter)
-            ? [prefix, $filter.name].join("-")
-            : [prefix, $filter["filter-name"]].join("-")
-
-          if (!_isFunction($filter)) {
-            readFilters[__filtersKey] = true
-            readFiltersValues[__filtersKey] = defaultFiltersValues[__filtersKey]
-          } else {
-            // We want any re-renders from filters used to trigger a re-render of the current filter
-            readFilters[__filtersKey] = true
-            readFiltersValues[__filtersKey] = defaultFiltersValues[__filtersKey]
-          }
-
-          return !_isFunction($filter)
-            ? !_isDefined(defaultFiltersValues[__filtersKey])
-              ? $filter.default
-              : defaultFiltersValues[__filtersKey]
-            : !_isDefined(defaultFiltersValues[__filtersKey])
-            ? $filter["init-object"]?.default
-            : defaultFiltersValues[__filtersKey]
+          return $$filterRead($filter)
         },
       }),
       [prefix]
@@ -1246,8 +1260,13 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
 /**
  * Get an atom's value
  */
-export function useValue<R>(atom: useAtomType<R> | Atom<R, any>) {
-  return useAtom(atom)[0] as R
+export function useValue<R>(atom: useAtomType<R> | Atom<R, any> | Filter<R>) {
+  // Check if this is a filter
+  if (typeof (atom as any)?.["init-object"].get !== "undefined")
+    return useFilter<R>(atom as Filter<R>)
+
+  // @ts-ignore
+  return useAtom(atom)[0] as const
 }
 export const useAtomValue = useValue
 
