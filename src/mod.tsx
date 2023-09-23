@@ -160,6 +160,8 @@ export type PersistenceStoreType = {
   remove?: PersistenceRemove
   removeItem?: PersistenceRemove
   removeItemAsync?: PersistenceRemove
+  delete?: PersistenceRemove
+  deleteItem?: PersistenceRemove
   deleteItemAsync?: PersistenceRemove
 }
 
@@ -191,6 +193,8 @@ export function createPersistence(
     persistenceProvider.removeItem ??
     persistenceProvider.remove ??
     persistenceProvider.removeItemAsync ??
+    persistenceProvider.delete ??
+    persistenceProvider.deleteItem ??
     persistenceProvider.deleteItemAsync ??
     (() => {})
 
