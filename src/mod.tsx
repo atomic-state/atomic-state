@@ -141,10 +141,26 @@ const atomsEffectsCleanupFunctons: any = {}
 
 const pendingAtoms: any = {}
 
+type PersistenceGet = (key: string) => any
+type PersistenceSet = (key: string, value: any) => void
+type PersistenceRemove = (key: string) => void
+
 export type PersistenceStoreType = {
-  getItem: (key: string) => any
-  setItem: (key: string, value: any) => void
-  removeItem: (key: string) => void
+  // Get item
+  get?: PersistenceGet
+  getItem?: PersistenceGet
+  getItemAsync?: PersistenceGet
+
+  // Set item
+  set?: PersistenceSet
+  setItem?: PersistenceSet
+  setItemAsync?: PersistenceSet
+
+  // Remove item
+  remove?: PersistenceRemove
+  removeItem?: PersistenceRemove
+  removeItemAsync?: PersistenceRemove
+  deleteItemAsync?: PersistenceRemove
 }
 
 const defaultPersistenceProvider =
@@ -155,6 +171,35 @@ const defaultPersistenceProvider =
         setItem() {},
         removeItem() {},
       }
+
+export function createPersistence(
+  persistenceProvider: PersistenceStoreType = defaultPersistenceProvider
+) {
+  const setItem =
+    persistenceProvider.setItem ??
+    persistenceProvider.set ??
+    persistenceProvider.setItemAsync ??
+    (() => {})
+
+  const getItem =
+    persistenceProvider.getItem ??
+    persistenceProvider.get ??
+    persistenceProvider.getItemAsync ??
+    (() => {})
+
+  const removeItem =
+    persistenceProvider.removeItem ??
+    persistenceProvider.remove ??
+    persistenceProvider.removeItemAsync ??
+    persistenceProvider.deleteItemAsync ??
+    (() => {})
+
+  persistenceProvider.setItem = setItem
+  persistenceProvider.getItem = getItem
+  persistenceProvider.removeItem = removeItem
+
+  return persistenceProvider
+}
 
 const atomicStateContext = createContext<{
   prefix: string
@@ -355,6 +400,8 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     persistenceProvider: $localStorage = persistenceProvider,
   } = init
 
+  const $persistence = createPersistence($localStorage) as Storage
+
   const $atomKey = prefix + "-" + init.name
 
   const [isLSReady, setIsLSReady] = useState(false)
@@ -423,10 +470,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         try {
           return (async () => {
             const storageItem =
-              typeof $localStorage === "undefined"
+              typeof $persistence === "undefined"
                 ? init.default
-                : await $localStorage.getItem($atomKey)
-            return typeof $localStorage === "undefined"
+                : await $persistence.getItem($atomKey)
+            return typeof $persistence === "undefined"
               ? init.default
               : JSON.parse(storageItem as any) || initDef
           })()
@@ -543,7 +590,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
             if (_isDefined(newValue)) {
               defaultAtomsValues[$atomKey] = newValue
               if (persistence) {
-                $localStorage.setItem($atomKey, JSON.stringify(newValue))
+                $persistence.setItem($atomKey, JSON.stringify(newValue))
               }
             }
             try {
@@ -596,7 +643,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     if (persistence) {
       if (typeof window !== "undefined") {
         if (typeof localStorage !== "undefined") {
-          if ($localStorage === localStorage) {
+          if ($persistence === localStorage) {
             const canListen = _isDefined(window.addEventListener)
             if (canListen) {
               if (sync) {
@@ -611,7 +658,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       }
     }
     return () => {}
-  }, [init.name, persistence, $localStorage])
+  }, [init.name, persistence, $persistence])
 
   useEffect(() => {
     async function loadPersistence() {
@@ -709,15 +756,15 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   useEffect(() => {
     async function updateStorage() {
       if (typeof localStorage !== "undefined") {
-        const storageItem = await $localStorage.getItem($atomKey)
+        const storageItem = await $persistence.getItem($atomKey)
         if (_isDefined(storageItem) || storageItem === null) {
           // Only remove from localStorage if persistence is false
           if (!persistence) {
-            $localStorage.removeItem($atomKey)
+            $persistence.removeItem($atomKey)
           } else {
             if (_isDefined(state)) {
               if (!jsonEquality(state, init.default)) {
-                $localStorage.setItem($atomKey, JSON.stringify(state))
+                $persistence.setItem($atomKey, JSON.stringify(state))
               }
             }
           }
@@ -1232,6 +1279,7 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
       },
       // Can be used with non-object values
       setValue({ dispatch, args }) {
+        // @ts-ignore
         dispatch(args)
       },
       /**

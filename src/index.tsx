@@ -31,4 +31,5 @@ export {
   useValue,
   session,
   createAtomicHook,
+  createPersistence,
 } from "./mod"

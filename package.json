@@ -1,6 +1,6 @@
 {
   "name": "atomic-state",
-  "version": "2.3.8",
+  "version": "2.4.0",
   "description": "Atomic State is a state management library for React",
   "main": "dist/index.js",
   "repository": {
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "compile": "tsc",
-    "test": "jest"
+    "test": "tsc && jest"
   },
   "keywords": [
     "State managment",
