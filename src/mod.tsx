@@ -206,10 +206,10 @@ export function createPersistence(
 }
 
 const atomicStateContext = createContext<{
-  prefix: string
+  prefix: string | boolean
   persistenceProvider: PersistenceStoreType
 }>({
-  prefix: "store",
+  prefix: false,
   persistenceProvider: defaultPersistenceProvider,
 })
 
@@ -256,7 +256,7 @@ export const AtomicState: React.FC<{
   /**
    * The prefix added to atoms inside this component
    */
-  prefix?: string
+  prefix?: string | boolean
   /**
    * The persistence provider (optional). It should have the `getItem`, `setItem` and `removeItem` methods.
    *
@@ -267,16 +267,20 @@ export const AtomicState: React.FC<{
   children,
   atoms,
   filters,
-  prefix = "store",
+  prefix = false,
   persistenceProvider = defaultPersistenceProvider,
 }) => {
   const atomicContext = useContext(atomicStateContext)
 
-  let atomicPrefix = !_isDefined(prefix) ? atomicContext.prefix : prefix
+  let atomicPrefix = `${
+    prefix === false
+      ? ""
+      : `${!_isDefined(prefix) ? atomicContext.prefix : prefix}-`
+  }`
 
   if (atoms) {
     for (let atomKey in atoms) {
-      const defaultsKey = `${atomicPrefix}-${atomKey}`
+      const defaultsKey = `${atomicPrefix}${atomKey}`
       if (!_isDefined(defaultAtomsValues[defaultsKey])) {
         defaultAtomsValues[defaultsKey] = atoms[atomKey]
         defaultAtomsInAtomic[defaultsKey] = true
@@ -285,7 +289,7 @@ export const AtomicState: React.FC<{
   }
   if (filters) {
     for (let filterKey in filters) {
-      const defaultsKey = `${atomicPrefix}-${filterKey}`
+      const defaultsKey = `${atomicPrefix}${filterKey}`
       if (!_isDefined(defaultFiltersValues[defaultsKey])) {
         defaultFiltersValues[defaultsKey] = filters[filterKey]
         defaultFiltersInAtomic[defaultsKey] = true
@@ -326,7 +330,7 @@ export const AtomicState: React.FC<{
   return (
     <atomicStateContext.Provider
       value={{
-        prefix: atomicPrefix,
+        prefix: atomicPrefix === "" ? false : atomicPrefix,
         persistenceProvider,
       }}
     >
@@ -360,7 +364,11 @@ export function takeSnapshot(storeName?: string) {
         atoms: {},
       }
     }
-    stores[prefixName].atoms[atomName] = defaultAtomsValues[atomKey]
+    if (atomName) {
+      stores[prefixName].atoms[atomName] = defaultAtomsValues[atomKey]
+    } else {
+      stores[""].atoms[atomName] = defaultAtomsValues[atomKey]
+    }
   }
 
   for (let filterKey in defaultFiltersValues) {
@@ -371,7 +379,11 @@ export function takeSnapshot(storeName?: string) {
         atoms: {},
       }
     }
-    stores[prefixName].filters[filterName] = defaultFiltersValues[filterKey]
+    if (filterName) {
+      stores[prefixName].filters[filterName] = defaultFiltersValues[filterKey]
+    } else {
+      stores[""].filters[filterName] = defaultFiltersValues[filterKey]
+    }
   }
   return !_isDefined(storeName) ? stores : stores[storeName as any] || {}
 }
@@ -379,16 +391,23 @@ export function takeSnapshot(storeName?: string) {
 /**
  * Get the current value of an atom. You can pass a specific prefix as the second argument.
  */
-export function getAtomValue<T = any>(atomName: string, prefix = "store") {
-  const $atomKey = [prefix, atomName].join("-")
+export function getAtomValue<T = any>(atomName: string, prefix?: string) {
+  if (!prefix) {
+    return defaultAtomsValues[atomName]
+  }
+  const $atomKey = [prefix ?? "store", atomName].join("-")
   return defaultAtomsValues[$atomKey]
 }
 
 /**
  * Get the current value of a filter. You can pass a specific prefix as the second argument.
  */
-export function getFilterValue<T = any>(filterName: string, prefix = "store") {
-  const $filterKey = [prefix, filterName].join("-")
+export function getFilterValue<T = any>(filterName: string, prefix?: string) {
+  if (!prefix) {
+    return defaultFiltersValues[filterName]
+  }
+
+  const $filterKey = [prefix ?? "store", filterName].join("-")
   return defaultFiltersValues[$filterKey]
 }
 
@@ -406,7 +425,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const $persistence = createPersistence($localStorage) as Storage
 
-  const $atomKey = prefix + "-" + init.name
+  const $atomKey = prefix === false ? init.name : prefix + "-" + init.name
 
   const [isLSReady, setIsLSReady] = useState(false)
 
@@ -473,13 +492,17 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       if (typeof window !== "undefined") {
         try {
           return (async () => {
-            const storageItem =
-              typeof $persistence === "undefined"
+            try {
+              const storageItem =
+                typeof $persistence === "undefined"
+                  ? init.default
+                  : await $persistence.getItem($atomKey)
+              return typeof $persistence === "undefined"
                 ? init.default
-                : await $persistence.getItem($atomKey)
-            return typeof $persistence === "undefined"
-              ? init.default
-              : JSON.parse(storageItem as any) || initDef
+                : JSON.parse(storageItem as any) || initDef
+            } catch {
+              return undefined
+            }
           })()
         } catch (err) {
           return initialValue
@@ -780,7 +803,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const atomGet = useCallback(
     function <R>($atom: useAtomType<R> | Atom<R, any>): R {
-      const $key = [prefix, ($atom as any)["atom-name"]].join("-")
+      const $key =
+        prefix === false
+          ? ($atom as any)["atom-name"]
+          : [prefix, ($atom as any)["atom-name"]].join("-")
       const $atomValue = defaultAtomsValues[$key]
       return $atomValue
     },
@@ -789,7 +815,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const filterRead = useCallback(
     function <R>($filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R {
-      const $key = [prefix, ($filter as any)["filter-name"]].join("-")
+      const $key =
+        prefix === false
+          ? ($filter as any)["filter-name"]
+          : [prefix, ($filter as any)["filter-name"]].join("-")
       const $filterValue = defaultFiltersValues[$key]
       return $filterValue
     },
@@ -881,11 +910,13 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     const { prefix } = useContext(atomicStateContext)
 
-    if (!filterDeps[`${prefix}-`]) {
-      filterDeps[`${prefix}-`] = {}
+    const $prefix = prefix === false ? "" : `${prefix}-`
+
+    if (!filterDeps[$prefix]) {
+      filterDeps[$prefix] = {}
     }
 
-    const $filterKey = prefix + "-" + name
+    const $filterKey = prefix === false ? name : prefix + "-" + name
 
     if (!filterObservables[$filterKey]) {
       filterObservables[$filterKey] = createObserver()
@@ -900,7 +931,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       [prefix, hookCall, $filterKey]
     )
 
-    for (let dep in filterDeps[`${prefix}-`]) {
+    for (let dep in filterDeps[$prefix]) {
       if (depsValues[dep] !== defaultAtomsValues[dep]) {
         resolvedFilters[$filterKey] = false
       }
@@ -915,17 +946,25 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     const $$filterGet = ($atom: any) => {
       subscribedFilters[$filterKey] = true
       if (!_isFunction($atom)) {
-        const depsKey = [prefix, $atom.name].join("-")
-        filterDeps[`${prefix}-`][depsKey] = true
+        const depsKey =
+          prefix === false ? $atom.name : [prefix, $atom.name].join("-")
+        filterDeps[$prefix][depsKey] = true
         depsValues[depsKey] = defaultAtomsValues[depsKey]
       } else {
-        const depsKey = [prefix, $atom?.["init-object"]?.name].join("-")
-        filterDeps[`${prefix}-`][depsKey] = true
+        const depsKey =
+          prefix === false
+            ? $atom?.["init-object"]?.name
+            : [prefix, $atom?.["init-object"]?.name].join("-")
+        filterDeps[$prefix][depsKey] = true
         depsValues[depsKey] = defaultAtomsValues[depsKey]
       }
 
-      const __valuesKey = [prefix, atom.name].join("-")
-      const __valuesKeyNames = [prefix, $atom["atom-name"]].join("-")
+      const __valuesKey =
+        prefix === false ? atom.name : [prefix, atom.name].join("-")
+      const __valuesKeyNames =
+        prefix === false
+          ? $atom["atom-name"]
+          : [prefix, $atom["atom-name"]].join("-")
 
       return !_isFunction($atom)
         ? !_isDefined(defaultAtomsValues[__valuesKey])
@@ -939,7 +978,11 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     const $$filterRead = ($filter: any) => {
       subscribedFilters[$filterKey] = true
       const __filtersKey = !_isFunction($filter)
-        ? [prefix, $filter.name].join("-")
+        ? prefix === false
+          ? $filter.name
+          : [prefix, $filter.name].join("-")
+        : prefix === false
+        ? $filter["filter-name"]
         : [prefix, $filter["filter-name"]].join("-")
 
       if (!_isFunction($filter)) {
@@ -1090,8 +1133,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           : !jsonEquality(e.payload, depsValues[e.storeName])
       ) {
         if (
-          e.storeName in
-          (isFilterUpdate ? readFilters : filterDeps[`${prefix}-`])
+          e.storeName in (isFilterUpdate ? readFilters : filterDeps[$prefix])
         ) {
           if (_isDefined(e.payload)) {
             if (isFilterUpdate) {
@@ -1106,8 +1148,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           if (!$resolving[$filterKey]) {
             $resolving[$filterKey] = true
             const newValue =
-              e.storeName in filterDeps[`${prefix}-`] ||
-              e.storeName in readFilters
+              e.storeName in filterDeps[$prefix] || e.storeName in readFilters
                 ? filtersInitializeObjects[name]?.get(getObject)
                 : defaultFiltersValues[$filterKey]
 
@@ -1138,7 +1179,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     useEffect(() => {
       // Whenever the filter object / function changes, add atoms deps again
 
-      for (let dep in filterDeps[`${prefix}-`]) {
+      for (let dep in filterDeps[$prefix]) {
         atomObservables[dep]?.observer.addListener(dep, renderValue)
       }
 
@@ -1151,7 +1192,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       }
 
       return () => {
-        for (let dep in filterDeps[`${prefix}-`]) {
+        for (let dep in filterDeps[$prefix]) {
           atomObservables[dep]?.observer.removeListener(dep, renderValue)
         }
 
@@ -1219,7 +1260,8 @@ export function useFilter<T>(
   return (
     !_isFunction(f)
       ? (() => {
-          const __filterSKey = [prefix, f.name].join("-")
+          const __filterSKey =
+            prefix === false ? f.name : [prefix, f.name].join("-")
           if (!_isDefined(objectFilters[__filterSKey])) {
             objectFilters[__filterSKey] = filter(
               filtersInitializeObjects[f.name] as any
