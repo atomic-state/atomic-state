@@ -32,8 +32,12 @@ export type ActionType<Args, T = any> = (
  * Atom type
  */
 export type Atom<T = any, ActionArgs = any> = {
-  name: string
+  name?: string
+  key?: string
   default?: T | Promise<T> | (() => Promise<T>) | (() => T)
+  /**
+   * @deprecated Use `persist`
+   */
   localStoragePersistence?: boolean
   /**
    * Short for `localStoragePersistence`
@@ -105,7 +109,8 @@ export type FilterGet = {
  * Filter type
  */
 export type Filter<T = any> = {
-  name: string
+  name?: string
+  key?: string
   default?: T
   get(c: FilterGet): T | Promise<T>
 }
@@ -253,6 +258,9 @@ export const AtomicState: React.FC<{
   filters?: {
     [key: string]: any
   }
+  selectors?: {
+    [key: string]: any
+  }
   /**
    * The prefix added to atoms inside this component
    */
@@ -267,6 +275,7 @@ export const AtomicState: React.FC<{
   children,
   atoms,
   filters,
+  selectors,
   prefix = false,
   persistenceProvider = defaultPersistenceProvider,
 }) => {
@@ -288,7 +297,7 @@ export const AtomicState: React.FC<{
     }
   }
   if (filters) {
-    for (let filterKey in filters) {
+    for (let filterKey in { ...filters, ...selectors }) {
       const defaultsKey = `${atomicPrefix}${filterKey}`
       if (!_isDefined(defaultFiltersValues[defaultsKey])) {
         defaultFiltersValues[defaultsKey] = filters[filterKey]
@@ -411,6 +420,10 @@ export function getFilterValue<T = any>(filterName: string, prefix?: string) {
   return defaultFiltersValues[$filterKey]
 }
 
+export const getAtom = getAtomValue
+export const getFilter = getAtomValue
+export const getSelector = getFilterValue
+
 function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const { prefix, persistenceProvider } = useContext(atomicStateContext)
 
@@ -425,7 +438,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const $persistence = createPersistence($localStorage) as Storage
 
-  const $atomKey = prefix === false ? init.name : prefix + "-" + init.name
+  if (!init.name) {
+    init.name = init.key as string
+  }
+
+  const $atomKey = prefix === false ? init.name : prefix + init.name
 
   const [isLSReady, setIsLSReady] = useState(false)
 
@@ -859,6 +876,10 @@ const ignoredAtomKeyWarnings: any = {}
  * Creates an atom containing state
  */
 export function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>) {
+  if (!init.name) {
+    init.name = init.key as string
+  }
+
   if (init.ignoreKeyWarning) {
     ignoredAtomKeyWarnings[init.name] = true
   }
@@ -889,6 +910,10 @@ const filterObservables: {
 const subscribedFilters: any = {}
 
 export function filter<R>(init: Filter<R | Promise<R>>) {
+  if (!init.name) {
+    init.name = init.key as string
+  }
+
   if (!_isDefined(filtersInitializeObjects[init?.name])) {
     filtersInitializeObjects[init?.name] = init
   }
@@ -910,13 +935,13 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     const { prefix } = useContext(atomicStateContext)
 
-    const $prefix = prefix === false ? "" : `${prefix}-`
+    const $prefix = prefix === false ? "" : (prefix as string)
 
     if (!filterDeps[$prefix]) {
       filterDeps[$prefix] = {}
     }
 
-    const $filterKey = prefix === false ? name : prefix + "-" + name
+    const $filterKey = prefix === false ? name : prefix + name
 
     if (!filterObservables[$filterKey]) {
       filterObservables[$filterKey] = createObserver()
@@ -1239,6 +1264,8 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
   return useFilterGet as unknown as Filter<R>
 }
 
+export const selector = filter
+
 export function useFilter<T>(
   f: (() => T | Promise<T>) | Filter<T | Promise<T>>
 ) {
@@ -1252,6 +1279,10 @@ export function useFilter<T>(
       }
     }
   } else {
+    if (!f.name) {
+      // @ts-ignore
+      f.name = (f as any).key as string
+    }
     if (filtersInitializeObjects[f.name] !== f) {
       ;(filtersInitializeObjects[f?.name] || {}).get = (f as any)?.get
     }
@@ -1260,6 +1291,10 @@ export function useFilter<T>(
   return (
     !_isFunction(f)
       ? (() => {
+          if (!f.name) {
+            // @ts-ignore
+            f.name = f.key as string
+          }
           const __filterSKey =
             prefix === false ? f.name : [prefix, f.name].join("-")
           if (!_isDefined(objectFilters[__filterSKey])) {
@@ -1284,6 +1319,10 @@ const objectAtoms: any = {}
  */
 export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
   if (!_isFunction(atom)) {
+    if (!atom.name) {
+      atom.name = atom.key as string
+    }
+
     if (!_isDefined(objectAtoms[atom.name])) {
       objectAtoms[atom.name] = createAtom(atom)
     } else {
@@ -1293,8 +1332,16 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
     }
   }
 
+  if (!_isFunction(atom)) {
+    if (!atom.name) {
+      atom.name = atom.key as string
+    }
+  }
+
   return (
-    !_isFunction(atom) ? objectAtoms[atom.name]() : (atom as () => void)()
+    !_isFunction(atom)
+      ? objectAtoms[(atom.name ?? atom.key)!]()
+      : (atom as () => void)()
   ) as [R, (cb: ((c: R) => R) | R) => void, ActionsObjectType<ActionsArgs>]
 }
 
@@ -1366,6 +1413,7 @@ export const useAtomValue = useValue
  * Get the function that updates the atom's value
  */
 export function useDispatch<R>(atom: useAtomType<R> | Atom<R, any>) {
+  // @ts-ignore
   return useAtom(atom)[1] as (cb: ((c: R) => R) | R) => void
 }
 export const useAtomDispatch = useDispatch
@@ -1376,6 +1424,7 @@ export const useAtomDispatch = useDispatch
 export function useActions<R, ActionsArgs = any>(
   atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>
 ) {
+  // @ts-ignore
   return useAtom(atom)[2] as Required<ActionsObjectType<ActionsArgs>>
 }
 export const useAtomActions = useActions
@@ -1439,6 +1488,8 @@ export function filterProvider<R>(states: {
     return useFilter(v)
   }
 }
+
+export const selectorProvider = filterProvider
 
 const storageOvservable = (() => {
   const emm = new Observable()
