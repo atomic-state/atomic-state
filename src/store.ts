@@ -39,12 +39,13 @@ export function getFilterValue<R>(
   return $filterValue
 }
 
-export function getValue<R = any>(init: Atom<R> | Filter<R>, prefix?: string) {
-  if (init.default) {
-    return getAtom(init, prefix)
-  } else return getFilter(init, prefix)
-}
-
 export const getAtom = getAtomValue
-export const getFilter = getAtomValue
+export const getFilter = getFilterValue
 export const getSelector = getFilterValue
+
+export function getValue<R = any>(init: Atom<R> | Filter<R>, prefix?: string) {
+  const isFilter = (init as any)["init-object"].get
+  if (!isFilter) {
+    return getAtom(init, prefix)
+  } else return getFilter(init as Filter<R>, prefix)
+}
