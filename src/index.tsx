@@ -4,7 +4,11 @@ export type {
   ActionType,
   ActionsObjectType,
   Atom,
+  /**
+   * @deprecated
+   */
   Filter,
+  Selector,
   FilterGet,
   PersistenceStoreType,
   useAtomType,
@@ -13,15 +17,16 @@ export type {
 export {
   atom,
   atomProvider,
+  /**
+   * @deprecated
+   */
   filter,
   selector,
+  /**
+   * @deprecated
+   */
   filterProvider,
   selectorProvider,
-  getAtomValue,
-  getAtom,
-  getFilterValue,
-  getFilter,
-  getSelector,
   storage,
   takeSnapshot,
   useActions,
@@ -30,6 +35,9 @@ export {
   useAtomDispatch,
   useAtomValue,
   useDispatch,
+  /**
+   * @deprecated
+   */
   useFilter,
   useStorage,
   useStorageItem,
@@ -37,4 +45,21 @@ export {
   session,
   createAtomicHook,
   createPersistence,
+  setAtom,
+  getActions,
 } from "./mod"
+
+export {
+  getAtomValue,
+  getAtom,
+  /**
+   * @deprecated
+   */
+  getFilterValue,
+  /**
+   * @deprecated
+   */
+  getFilter,
+  getSelector,
+  getValue,
+} from "./store"

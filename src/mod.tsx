@@ -20,6 +20,19 @@ import React, {
 
 import { EventEmitter as Observable } from "events"
 
+import {
+  defaultAtomsValues,
+  atomsInitializeObjects,
+  filtersInitializeObjects,
+  defaultAtomsInAtomic,
+  defaultFiltersInAtomic,
+  usedKeys,
+  defaultFiltersValues,
+  atomsEffectsCleanupFunctons,
+  pendingAtoms,
+  getAtom,
+} from "./store"
+
 export type ActionType<Args, T = any> = (
   args: {
     args: Args
@@ -115,6 +128,8 @@ export type Filter<T = any> = {
   get(c: FilterGet): T | Promise<T>
 }
 
+export type Selector = Filter
+
 export function createObserver() {
   const observer = new Observable()
   observer.setMaxListeners(10e10)
@@ -133,18 +148,6 @@ const atomObservables: {
     notify: (storeName: string, hookCall: string, payload?: any) => void
   }
 } = {}
-
-const defaultAtomsValues: any = {}
-const atomsInitializeObjects: any = {}
-const filtersInitializeObjects: any = {}
-const defaultAtomsInAtomic: any = {}
-const defaultFiltersInAtomic: any = {}
-const usedKeys: any = {}
-const defaultFiltersValues: any = {}
-
-const atomsEffectsCleanupFunctons: any = {}
-
-const pendingAtoms: any = {}
 
 type PersistenceGet = (key: string) => any
 type PersistenceSet = (key: string, value: any) => void
@@ -397,32 +400,76 @@ export function takeSnapshot(storeName?: string) {
   return !_isDefined(storeName) ? stores : stores[storeName as any] || {}
 }
 
-/**
- * Get the current value of an atom. You can pass a specific prefix as the second argument.
- */
-export function getAtomValue<T = any>(atomName: string, prefix?: string) {
-  if (!prefix) {
-    return defaultAtomsValues[atomName]
+export function setAtom<R = any>(
+  $atom: Atom<R>,
+  v: R | ((previous: R) => R),
+  prefix?: string
+) {
+  const init = ($atom as any)["init-object"]
+
+  const { key, effects = [] } = init as Atom<R>
+
+  const $atomKey = (prefix ? `${prefix}-${key}` : key) as string
+
+  const observable = atomObservables[$atomKey!]
+
+  const newValue =
+    typeof v === "function" ? (v as any)(defaultAtomsValues[$atomKey]) : v
+
+  let willCancel: boolean = false
+
+  function cancel() {
+    willCancel = true
   }
-  const $atomKey = [prefix ?? "store", atomName].join("-")
-  return defaultAtomsValues[$atomKey]
+
+  for (let cleanupFunction of atomsEffectsCleanupFunctons[$atomKey] ?? []) {
+    cleanupFunction()
+  }
+
+  for (let effect of effects) {
+    const currentState = defaultAtomsValues[$atomKey]
+
+    const effectResult = effect({
+      previous: currentState,
+      state: newValue,
+      cancel,
+      dispatch: undefined!,
+    })
+
+    if (typeof effectResult === "boolean") {
+      if (effectResult === false) {
+        willCancel = true
+      }
+    }
+  }
+
+  if (!willCancel) {
+    defaultAtomsValues[$atomKey] = newValue
+    observable.notify(
+      $atomKey,
+      Math.random().toFixed(2),
+      defaultAtomsValues[$atomKey]
+    )
+  }
 }
 
-/**
- * Get the current value of a filter. You can pass a specific prefix as the second argument.
- */
-export function getFilterValue<T = any>(filterName: string, prefix?: string) {
-  if (!prefix) {
-    return defaultFiltersValues[filterName]
+export function getActions<R = any, A = any>($atom: Atom<R, A>) {
+  const init = ($atom as any)["init-object"] as Atom<R, A>
+
+  let _actions: any = {}
+
+  for (let action in init.actions) {
+    _actions[action] = (args: (typeof init.actions)[typeof action]) =>
+      (init.actions as any)[action]({
+        args,
+        dispatch: (v: any) => setAtom($atom, v),
+        get: getAtom,
+        set: setAtom,
+      })
   }
 
-  const $filterKey = [prefix ?? "store", filterName].join("-")
-  return defaultFiltersValues[$filterKey]
+  return _actions as Required<ActionsObjectType<A>>
 }
-
-export const getAtom = getAtomValue
-export const getFilter = getAtomValue
-export const getSelector = getFilterValue
 
 function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const { prefix, persistenceProvider } = useContext(atomicStateContext)
