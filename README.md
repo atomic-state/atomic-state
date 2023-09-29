@@ -28,11 +28,4 @@ Or with yarn:
 yarn add atomic-state
 ```
 
-### For production apps
-
-
-```html
-<script src="https://unpkg.com/atomic-state/browser/atomic-state.min.js"></script>
-```
-
 [Getting started](https://atomic-state.netlify.app/docs)
