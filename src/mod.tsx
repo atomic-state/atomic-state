@@ -922,25 +922,32 @@ const ignoredAtomKeyWarnings: any = {}
 /**
  * Creates an atom containing state
  */
-export function atom<R, ActionsArgs = any>(init: Atom<R, ActionsArgs>) {
-  if (!init.name) {
-    init.name = init.key as string
+export function atom<R, ActionsArgs = any>(
+  $init: Atom<R, ActionsArgs> | Filter<R>
+) {
+  if ("get" in $init) {
+    return filter($init as Filter<R>)
+  } else {
+    const init = $init as Atom<R, ActionsArgs>
+    if (!init.name) {
+      init.name = init.key as string
+    }
+
+    if (init.ignoreKeyWarning) {
+      ignoredAtomKeyWarnings[init.name] = true
+    }
+
+    usedKeys[init.name] = true
+
+    if (!atomsInitializeObjects[init?.name]) {
+      atomsInitializeObjects[init?.name] = init
+    }
+
+    const useCreate = () => useAtomCreate<R, ActionsArgs>(init)
+    useCreate["atom-name"] = init.name
+    useCreate["init-object"] = init
+    return useCreate as Atom<R, ActionsArgs>
   }
-
-  if (init.ignoreKeyWarning) {
-    ignoredAtomKeyWarnings[init.name] = true
-  }
-
-  usedKeys[init.name] = true
-
-  if (!atomsInitializeObjects[init?.name]) {
-    atomsInitializeObjects[init?.name] = init
-  }
-
-  const useCreate = () => useAtomCreate<R, ActionsArgs>(init)
-  useCreate["atom-name"] = init.name
-  useCreate["init-object"] = init
-  return useCreate as Atom<R, ActionsArgs>
 }
 export const createAtom = atom
 
