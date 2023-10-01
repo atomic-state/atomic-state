@@ -1,6 +1,6 @@
 {
   "name": "atomic-state",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "Atomic State is a state management library for React",
   "main": "dist/index.js",
   "repository": {
@@ -40,7 +40,5 @@
     "react": ">=16.13.1",
     "react-dom": ">=16.13.1"
   },
-  "dependencies": {
-    "events": "^3.3.0"
-  }
+  "dependencies": {}
 }
