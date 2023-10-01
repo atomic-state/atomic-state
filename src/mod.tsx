@@ -18,7 +18,11 @@ import React, {
   useState,
 } from "react"
 
-import { EventEmitter as Observable } from "events"
+type Observable = {
+  addListener(event: string, listener?: any): void
+  removeListener(event: string, listener?: any): void
+  emit(event: string, payload?: any): void
+}
 
 import {
   defaultAtomsValues,
@@ -130,9 +134,37 @@ export type Filter<T = any> = {
 
 export type Selector = Filter
 
+function newObservable(): Observable {
+  let subscribers: any = {}
+
+  const observer: Observable = {
+    addListener(event: string, listener?: any) {
+      if (!subscribers[event]) {
+        subscribers[event] = []
+      }
+      subscribers[event].push(listener)
+    },
+    removeListener(event: string, listener?: any) {
+      if (!subscribers[event]) {
+        subscribers[event] = []
+      }
+      subscribers[event] = subscribers[event].filter((l: any) => l !== listener)
+    },
+    emit(event: string, payload?: any) {
+      if (subscribers[event]) {
+        subscribers[event].forEach((listener: any) => {
+          listener(payload)
+        })
+      }
+    },
+  }
+
+  return observer
+}
+
 export function createObserver() {
-  const observer = new Observable()
-  observer.setMaxListeners(10e10)
+  const observer = newObservable()
+
   function notify(storeName: string, hookCall: string, payload: any) {
     observer.emit(storeName, { storeName, hookCall, payload })
   }
@@ -1546,7 +1578,7 @@ export function filterProvider<R>(states: {
 export const selectorProvider = filterProvider
 
 const storageOvservable = (() => {
-  const emm = new Observable()
+  const emm = newObservable()
   return emm
 })()
 
