@@ -1,10 +1,10 @@
 import React, { useEffect } from "react"
-import { useDispatch, useFilter } from "../"
-import { clicks, clicksFilter, tripleCliksFilter } from "./atoms"
+import { useDispatch, useValue } from "../"
+import { clicksState, doubleClicksState, tripleClicksState } from "./atoms"
 
 export const RenderCountDouble = () => {
-  const constDoubleCount = useFilter(clicksFilter)
-  const tripleDoubleCount = useFilter(tripleCliksFilter)
+  const constDoubleCount = useValue(doubleClicksState)
+  const tripleDoubleCount = useValue(tripleClicksState)
 
   return (
     <h2>
@@ -14,7 +14,7 @@ export const RenderCountDouble = () => {
 }
 
 export const IncreaseButton2 = () => {
-  const setAtomValue = useDispatch(clicks)
+  const setAtomValue = useDispatch(clicksState)
 
   useEffect(() => {
     // Reset count when mounting to prevent conflicts with other tests
