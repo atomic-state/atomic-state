@@ -35,6 +35,7 @@ import {
   atomsEffectsCleanupFunctons,
   pendingAtoms,
   getAtom,
+  getValue,
 } from "./store"
 
 export type ActionType<Args, T = any> = (
@@ -49,8 +50,11 @@ export type ActionType<Args, T = any> = (
  * Atom type
  */
 export type Atom<T = any, ActionArgs = any> = {
+  /**
+   * @deprecated Use `key` instead
+   */
   name?: string
-  key?: string
+  key: string
   default?: T | Promise<T> | (() => Promise<T>) | (() => T)
   /**
    * @deprecated Use `persist`
@@ -75,10 +79,6 @@ export type Atom<T = any, ActionArgs = any> = {
    * If `persist` is true, this will run whenever the state is updated from another tab. This will not run in the tab that updated the state.
    */
   onSync?(message: T): void
-  /**
-   * If false, no warning for duplicate keys will be shown
-   */
-  ignoreKeyWarning?: boolean
   /**
    * @deprecated
    * This is for use when `localStoragePersistence` is `true`
@@ -126,8 +126,11 @@ export type FilterGet = {
  * Filter type
  */
 export type Filter<T = any> = {
+  /**
+   * @deprecated Use `key` instead
+   */
   name?: string
-  key?: string
+  key: string
   default?: T
   get(c: FilterGet): T | Promise<T>
 }
@@ -290,16 +293,13 @@ export const AtomicState: React.FC<{
   /**
    * Set default filters' values using filter key
    */
-  filters?: {
-    [key: string]: any
-  }
   selectors?: {
     [key: string]: any
   }
   /**
-   * The prefix added to atoms inside this component
+   * The store name where atoms under the tree will be saved
    */
-  prefix?: string | boolean
+  storeName?: string | boolean
   /**
    * The persistence provider (optional). It should have the `getItem`, `setItem` and `removeItem` methods.
    *
@@ -309,9 +309,9 @@ export const AtomicState: React.FC<{
 }> = ({
   children,
   atoms,
-  filters,
+  selectors: filters,
   selectors,
-  prefix = false,
+  storeName: prefix = false,
   persistenceProvider = defaultPersistenceProvider,
 }) => {
   const atomicContext = useContext(atomicStateContext)
@@ -402,31 +402,42 @@ export function takeSnapshot(storeName?: string) {
 
   for (let atomKey in defaultAtomsValues) {
     const [prefixName, atomName] = atomKey.split("-")
-    if (!_isDefined(stores[prefixName])) {
-      stores[prefixName] = {
-        filters: {},
-        atoms: {},
+
+    // This means an atom does not belong to a specific store
+    // so it will be added to the `default` store
+    if (!atomName) {
+      if (!stores.default) {
+        stores.default = {}
+      }
+    } else {
+      if (!_isDefined(stores[prefixName])) {
+        stores[prefixName] = {}
       }
     }
+
     if (atomName) {
-      stores[prefixName].atoms[atomName] = defaultAtomsValues[atomKey]
+      stores[prefixName][atomName] = defaultAtomsValues[atomKey]
     } else {
-      stores[""].atoms[atomName] = defaultAtomsValues[atomKey]
+      stores["default"][prefixName] = defaultAtomsValues[atomKey]
     }
   }
 
   for (let filterKey in defaultFiltersValues) {
     const [prefixName, filterName] = filterKey.split("-")
-    if (!_isDefined(stores[prefixName])) {
-      stores[prefixName] = {
-        filters: {},
-        atoms: {},
+
+    if (!filterName) {
+      if (!stores.default) {
+        stores.default = {}
+      }
+    } else {
+      if (!_isDefined(stores[prefixName])) {
+        stores[prefixName] = {}
       }
     }
     if (filterName) {
-      stores[prefixName].filters[filterName] = defaultFiltersValues[filterKey]
+      stores[prefixName][filterName] = defaultFiltersValues[filterKey]
     } else {
-      stores[""].filters[filterName] = defaultFiltersValues[filterKey]
+      stores["default"][prefixName] = defaultFiltersValues[filterKey]
     }
   }
   return !_isDefined(storeName) ? stores : stores[storeName as any] || {}
@@ -933,7 +944,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
               args,
               state,
               dispatch: updateState as Dispatch<SetStateAction<R>>,
-              get: atomGet,
+              get: getValue,
               read: filterRead,
             }),
         ])
@@ -949,13 +960,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   ]
 }
 
-const ignoredAtomKeyWarnings: any = {}
-
 /**
  * Creates an atom containing state
  */
 export function atom<R, ActionsArgs = any>(
-  $init: Atom<R, ActionsArgs> | Filter<R>
+  $init: Omit<Atom<R, ActionsArgs>, "name"> | Omit<Filter<R>, "name">
 ) {
   if ("get" in $init) {
     return filter($init as Filter<R>)
@@ -963,10 +972,6 @@ export function atom<R, ActionsArgs = any>(
     const init = $init as Atom<R, ActionsArgs>
     if (!init.name) {
       init.name = init.key as string
-    }
-
-    if (init.ignoreKeyWarning) {
-      ignoredAtomKeyWarnings[init.name] = true
     }
 
     usedKeys[init.name] = true
@@ -978,6 +983,9 @@ export function atom<R, ActionsArgs = any>(
     const useCreate = () => useAtomCreate<R, ActionsArgs>(init)
     useCreate["atom-name"] = init.name
     useCreate["init-object"] = init
+
+    useCreate.key = init.name
+
     return useCreate as Atom<R, ActionsArgs>
   }
 }
@@ -1427,7 +1435,7 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
   return (
     !_isFunction(atom)
       ? objectAtoms[(atom.name ?? atom.key)!]()
-      : (atom as () => void)()
+      : (atom as unknown as () => void)()
   ) as [R, (cb: ((c: R) => R) | R) => void, ActionsObjectType<ActionsArgs>]
 }
 

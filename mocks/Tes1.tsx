@@ -1,14 +1,14 @@
 import React from "react"
 import { useDispatch, useValue } from "../"
-import { clicks } from "./atoms"
+import { clicksState } from "./atoms"
 
 export const RenderCount = () => {
-  const clicksCount = useValue(clicks)
+  const clicksCount = useValue(clicksState)
   return <h2>count is {clicksCount}</h2>
 }
 
 export const IncreaseButton = () => {
-  const setAtomValue = useDispatch(clicks)
+  const setAtomValue = useDispatch(clicksState)
 
   return (
     <div>
