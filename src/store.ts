@@ -1,10 +1,9 @@
-import { Atom, Filter } from "./mod"
+import { Atom, Selector } from './mod'
 
 export const defaultAtomsValues: any = {}
 export const atomsInitializeObjects: any = {}
-export const filtersInitializeObjects: any = {}
+export const filtersInitializeObjects: any = atomsInitializeObjects
 export const defaultAtomsInAtomic: any = {}
-export const defaultFiltersInAtomic: any = {}
 export const usedKeys: any = {}
 export const defaultFiltersValues: any = {}
 export const atomsEffectsCleanupFunctons: any = {}
@@ -18,9 +17,14 @@ export function getAtomValue<R>(
   prefix?: string
 ): R {
   const $key = prefix
-    ? [prefix, ($atom as any)["atom-name"]].join("-")
-    : ($atom as any)["atom-name"]
+    ? [prefix, ($atom as any)['atom-name']].join('-')
+    : ($atom as any)['atom-name']
   const $atomValue = defaultAtomsValues[$key]
+
+  console.log({
+    defaultAtomsValues,
+    $key
+  })
   return $atomValue
 }
 
@@ -28,12 +32,12 @@ export function getAtomValue<R>(
  * Get the current value of a filter. You can pass a specific prefix as the second argument.
  */
 export function getFilterValue<R>(
-  $filter: (() => R | Promise<R>) | Filter<R | Promise<R>>,
+  $filter: (() => R | Promise<R>) | Selector<R | Promise<R>>,
   prefix?: string
 ): R {
   const $key = prefix
-    ? [prefix, ($filter as any)["filter-name"]].join("-")
-    : ($filter as any)["filter-name"]
+    ? [prefix, ($filter as any)['filter-name']].join('-')
+    : ($filter as any)['filter-name']
 
   const $filterValue = defaultFiltersValues[$key]
   return $filterValue
@@ -43,9 +47,12 @@ export const getAtom = getAtomValue
 export const getFilter = getFilterValue
 export const getSelector = getFilterValue
 
-export function getValue<R = any>(init: Atom<R> | Filter<R>, prefix?: string) {
-  const isFilter = (init as any)["init-object"].get
+export function getValue<R = any>(
+  init: Atom<R> | Selector<R>,
+  storeName: string | boolean = false
+) {
+  const isFilter = (init as any)['init-object'].get
   if (!isFilter) {
-    return getAtom(init, prefix)
-  } else return getFilter(init as Filter<R>, prefix)
+    return getAtom(init, storeName as string)
+  } else return getFilter(init as Selector<R>, storeName as string)
 }

@@ -1,2 +1,2 @@
-"use client"
-export { AtomicState } from "../mod"
+'use client'
+export { AtomicState } from '../mod'
