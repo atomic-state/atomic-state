@@ -1,6 +1,6 @@
-import React from "react"
-import { useAtom } from "../"
-import { nameState } from "./atoms"
+import React from 'react'
+import { useAtom } from '../'
+import { nameState } from './atoms'
 
 export const NameDisplay = () => {
   const [name] = useAtom(nameState)
@@ -12,10 +12,10 @@ export const NameField = () => {
   return (
     <div>
       <input
-        title="name field"
-        type="text"
+        title='name field'
+        type='text'
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={e => setName(e.target.value)}
       />
     </div>
   )

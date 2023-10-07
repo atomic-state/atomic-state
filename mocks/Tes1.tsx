@@ -1,6 +1,6 @@
-import React from "react"
-import { useDispatch, useValue } from "../"
-import { clicksState } from "./atoms"
+import React from 'react'
+import { useDispatch, useValue } from '../'
+import { clicksState } from './atoms'
 
 export const RenderCount = () => {
   const clicksCount = useValue(clicksState)
@@ -12,9 +12,7 @@ export const IncreaseButton = () => {
 
   return (
     <div>
-      <button onClick={() => setAtomValue((value) => value + 1)}>
-        increase
-      </button>
+      <button onClick={() => setAtomValue(value => value + 1)}>increase</button>
     </div>
   )
 }

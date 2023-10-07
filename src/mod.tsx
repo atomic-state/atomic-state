@@ -1,4 +1,4 @@
-"use client"
+'use client'
 /**  @license Atomic State
  * Copyright (c) Dany Beltran
  *
@@ -15,8 +15,8 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState,
-} from "react"
+  useState
+} from 'react'
 
 type Observable = {
   addListener(event: string, listener?: any): void
@@ -29,21 +29,20 @@ import {
   atomsInitializeObjects,
   filtersInitializeObjects,
   defaultAtomsInAtomic,
-  defaultFiltersInAtomic,
   usedKeys,
   defaultFiltersValues,
   atomsEffectsCleanupFunctons,
   pendingAtoms,
   getAtom,
-  getValue,
-} from "./store"
+  getValue
+} from './store'
 
 export type ActionType<Args, T = any> = (
   args: {
     args: Args
     state: T
     dispatch: Dispatch<SetStateAction<T>>
-  } & FilterGet
+  } & ActionGet
 ) => void
 
 /**
@@ -56,10 +55,7 @@ export type Atom<T = any, ActionArgs = any> = {
   name?: string
   key: string
   default?: T | Promise<T> | (() => Promise<T>) | (() => T)
-  /**
-   * @deprecated Use `persist`
-   */
-  localStoragePersistence?: boolean
+
   /**
    * Short for `localStoragePersistence`
    */
@@ -79,14 +75,6 @@ export type Atom<T = any, ActionArgs = any> = {
    * If `persist` is true, this will run whenever the state is updated from another tab. This will not run in the tab that updated the state.
    */
   onSync?(message: T): void
-  /**
-   * @deprecated
-   * This is for use when `localStoragePersistence` is `true`
-   * By default it's false. This is to prevent hydration errors.
-   * If set to `false`, data from localStorage will be loaded during render, not after.
-   * May have some bugs
-   */
-  hydration?: boolean
   actions?: {
     [E in keyof Partial<ActionArgs>]: ActionType<ActionArgs[E], T>
   }
@@ -114,28 +102,28 @@ export type useAtomType<R, ActionsArgs = any> = () => (
 /**
  * Type for the `get` function of filters
  */
-export type FilterGet = {
+export type SelectorGet = {
   get<R>(atom: useAtomType<R> | Atom<R, any>): R
-  /**
-   * @deprecated Use the `get` method to subscribe to atoms or filters
-   */
-  read<R>(filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R
+}
+/**
+ * Type for the `get` function of filters
+ */
+export type ActionGet = {
+  get<R>(atom: useAtomType<R> | Atom<R, any>, storeName?: string | boolean): R
 }
 
 /**
  * Filter type
  */
-export type Filter<T = any> = {
+export type Selector<T = any> = {
   /**
    * @deprecated Use `key` instead
    */
   name?: string
   key: string
   default?: T
-  get(c: FilterGet): T | Promise<T>
+  get(c: SelectorGet): T | Promise<T>
 }
-
-export type Selector = Filter
 
 function newObservable(): Observable {
   let subscribers: any = {}
@@ -159,7 +147,7 @@ function newObservable(): Observable {
           listener(payload)
         })
       }
-    },
+    }
   }
 
   return observer
@@ -173,7 +161,7 @@ export function createObserver() {
   }
   return {
     observer: observer,
-    notify,
+    notify
   }
 }
 
@@ -209,12 +197,12 @@ export type PersistenceStoreType = {
 }
 
 const defaultPersistenceProvider =
-  typeof localStorage !== "undefined"
+  typeof localStorage !== 'undefined'
     ? localStorage
     : {
         getItem() {},
         setItem() {},
-        removeItem() {},
+        removeItem() {}
       }
 
 export function createPersistence(
@@ -249,11 +237,11 @@ export function createPersistence(
 }
 
 const atomicStateContext = createContext<{
-  prefix: string | boolean
+  storeName: string | boolean
   persistenceProvider: PersistenceStoreType
 }>({
-  prefix: false,
-  persistenceProvider: defaultPersistenceProvider,
+  storeName: false,
+  persistenceProvider: defaultPersistenceProvider
 })
 
 function AtomInitialize({ atm }: any) {
@@ -261,17 +249,12 @@ function AtomInitialize({ atm }: any) {
   return null
 }
 
-function FilterInitialize({ filt }: any) {
-  useFilter(filt)
-  return null
-}
-
 function _isDefined(target: any) {
-  return typeof target !== "undefined"
+  return typeof target !== 'undefined'
 }
 
 function _isFunction(target: any) {
-  return typeof target === "function"
+  return typeof target === 'function'
 }
 
 function _isPromise(target: any) {
@@ -287,13 +270,7 @@ export const AtomicState: React.FC<{
   /**
    * Set default values using an atom's key
    */
-  atoms?: {
-    [key: string]: any
-  }
-  /**
-   * Set default filters' values using filter key
-   */
-  selectors?: {
+  default?: {
     [key: string]: any
   }
   /**
@@ -308,35 +285,17 @@ export const AtomicState: React.FC<{
   persistenceProvider?: PersistenceStoreType
 }> = ({
   children,
-  atoms,
-  selectors: filters,
-  selectors,
-  storeName: prefix = false,
-  persistenceProvider = defaultPersistenceProvider,
+  default: def,
+  storeName = false,
+  persistenceProvider = defaultPersistenceProvider
 }) => {
-  const atomicContext = useContext(atomicStateContext)
-
-  let atomicPrefix = `${
-    prefix === false
-      ? ""
-      : `${!_isDefined(prefix) ? atomicContext.prefix : prefix}-`
-  }`
-
-  if (atoms) {
-    for (let atomKey in atoms) {
-      const defaultsKey = `${atomicPrefix}${atomKey}`
+  if (def) {
+    for (let atomKey in def) {
+      const defaultsKey =
+        storeName === false ? atomKey : `${storeName}-${atomKey}`
       if (!_isDefined(defaultAtomsValues[defaultsKey])) {
-        defaultAtomsValues[defaultsKey] = atoms[atomKey]
+        defaultAtomsValues[defaultsKey] = def[atomKey]
         defaultAtomsInAtomic[defaultsKey] = true
-      }
-    }
-  }
-  if (filters) {
-    for (let filterKey in { ...filters, ...selectors }) {
-      const defaultsKey = `${atomicPrefix}${filterKey}`
-      if (!_isDefined(defaultFiltersValues[defaultsKey])) {
-        defaultFiltersValues[defaultsKey] = filters[filterKey]
-        defaultFiltersInAtomic[defaultsKey] = true
       }
     }
   }
@@ -349,7 +308,7 @@ export const AtomicState: React.FC<{
     () =>
       createdAtoms.map((atm: any) => {
         return (
-          <React.StrictMode key={atm?.name + prefix + thisId}>
+          <React.StrictMode key={atm?.name + storeName + thisId}>
             <AtomInitialize atm={atm} />
           </React.StrictMode>
         )
@@ -357,31 +316,14 @@ export const AtomicState: React.FC<{
     [createdAtoms]
   )
 
-  const createdFilters = Object.values(filtersInitializeObjects) as any
-
-  const initializedFilters = useMemo(
-    () =>
-      createdFilters.map((flt: any) => {
-        return (
-          <React.StrictMode key={flt?.name + prefix + thisId}>
-            <FilterInitialize filt={flt} />
-          </React.StrictMode>
-        )
-      }),
-    [createdFilters]
-  )
-
   return (
     <atomicStateContext.Provider
       value={{
-        prefix: atomicPrefix === "" ? false : atomicPrefix,
-        persistenceProvider,
+        storeName: storeName === '' ? false : storeName,
+        persistenceProvider
       }}
     >
-      <>
-        {initialized}
-        {initializedFilters}
-      </>
+      <>{initialized}</>
 
       {children}
     </atomicStateContext.Provider>
@@ -401,7 +343,9 @@ export function takeSnapshot(storeName?: string) {
   let stores: any = {}
 
   for (let atomKey in defaultAtomsValues) {
-    const [prefixName, atomName] = atomKey.split("-")
+    const [prefixName, atomName] = atomKey.split('-')
+
+    const storeExists = atomKey.includes('-')
 
     // This means an atom does not belong to a specific store
     // so it will be added to the `default` store
@@ -415,17 +359,19 @@ export function takeSnapshot(storeName?: string) {
       }
     }
 
-    if (atomName) {
+    if (storeExists) {
       stores[prefixName][atomName] = defaultAtomsValues[atomKey]
     } else {
-      stores["default"][prefixName] = defaultAtomsValues[atomKey]
+      stores['default'][prefixName] = defaultAtomsValues[atomKey]
     }
   }
 
   for (let filterKey in defaultFiltersValues) {
-    const [prefixName, filterName] = filterKey.split("-")
+    const [prefixName, filterName] = filterKey.split('-')
 
-    if (!filterName) {
+    const storeExists = filterKey.includes('-')
+
+    if (!storeExists) {
       if (!stores.default) {
         stores.default = {}
       }
@@ -434,10 +380,10 @@ export function takeSnapshot(storeName?: string) {
         stores[prefixName] = {}
       }
     }
-    if (filterName) {
+    if (storeExists) {
       stores[prefixName][filterName] = defaultFiltersValues[filterKey]
     } else {
-      stores["default"][prefixName] = defaultFiltersValues[filterKey]
+      stores['default'][prefixName] = defaultFiltersValues[filterKey]
     }
   }
   return !_isDefined(storeName) ? stores : stores[storeName as any] || {}
@@ -445,10 +391,10 @@ export function takeSnapshot(storeName?: string) {
 
 export function setAtom<R = any>(
   $atom: Atom<R>,
-  v: R | ((previous: R) => R),
+  v: SetStateAction<R>,
   prefix?: string
 ) {
-  const init = ($atom as any)["init-object"]
+  const init = ($atom as any)['init-object']
 
   const { key, effects = [] } = init as Atom<R>
 
@@ -457,7 +403,7 @@ export function setAtom<R = any>(
   const observable = atomObservables[$atomKey!]
 
   const newValue =
-    typeof v === "function" ? (v as any)(defaultAtomsValues[$atomKey]) : v
+    typeof v === 'function' ? (v as any)(defaultAtomsValues[$atomKey]) : v
 
   let willCancel: boolean = false
 
@@ -476,10 +422,10 @@ export function setAtom<R = any>(
       previous: currentState,
       state: newValue,
       cancel,
-      dispatch: undefined!,
+      dispatch: undefined!
     })
 
-    if (typeof effectResult === "boolean") {
+    if (typeof effectResult === 'boolean') {
       if (effectResult === false) {
         willCancel = true
       }
@@ -497,7 +443,7 @@ export function setAtom<R = any>(
 }
 
 export function getActions<R = any, A = any>($atom: Atom<R, A>) {
-  const init = ($atom as any)["init-object"] as Atom<R, A>
+  const init = ($atom as any)['init-object'] as Atom<R, A>
 
   let _actions: any = {}
 
@@ -507,7 +453,7 @@ export function getActions<R = any, A = any>($atom: Atom<R, A>) {
         args,
         dispatch: (v: any) => setAtom($atom, v),
         get: getAtom,
-        set: setAtom,
+        set: setAtom
       })
   }
 
@@ -515,16 +461,17 @@ export function getActions<R = any, A = any>($atom: Atom<R, A>) {
 }
 
 function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
-  const { prefix, persistenceProvider } = useContext(atomicStateContext)
+  const { storeName, persistenceProvider } = useContext(atomicStateContext)
 
   const {
     effects = [],
     persist,
-    localStoragePersistence,
     sync = true,
     onSync = () => {},
-    persistenceProvider: $localStorage = persistenceProvider,
+    persistenceProvider: $localStorage = persistenceProvider
   } = init
+
+  const persistence = persist
 
   const $persistence = createPersistence($localStorage) as Storage
 
@@ -532,13 +479,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     init.name = init.key as string
   }
 
-  const $atomKey = prefix === false ? init.name : prefix + init.name
+  const $atomKey = storeName === false ? init.name : storeName + '-' + init.name
 
   const [isLSReady, setIsLSReady] = useState(false)
 
-  const persistence = localStoragePersistence || persist
-
-  const hookCall = useMemo(() => `${Math.random()}`.split(".")[1], [])
+  const hookCall = useMemo(() => `${Math.random()}`.split('.')[1], [])
 
   if (!($atomKey in atomsEffectsCleanupFunctons)) {
     atomsEffectsCleanupFunctons[$atomKey] = []
@@ -574,7 +519,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
     try {
       if (persistence) {
-        if (typeof localStorage !== "undefined") {
+        if (typeof localStorage !== 'undefined') {
           if (
             !_isDefined(defaultAtomsValues[$atomKey]) ||
             defaultAtomsInAtomic[$atomKey]
@@ -596,15 +541,15 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const [vIfPersistence, setVIfPersistence] = useState(() => {
     if (persist) {
-      if (typeof window !== "undefined") {
+      if (typeof window !== 'undefined') {
         try {
           return (async () => {
             try {
               const storageItem =
-                typeof $persistence === "undefined"
+                typeof $persistence === 'undefined'
                   ? init.default
                   : await $persistence.getItem($atomKey)
-              return typeof $persistence === "undefined"
+              return typeof $persistence === 'undefined'
                 ? init.default
                 : JSON.parse(storageItem as any) || initDef
             } catch {
@@ -696,7 +641,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
               previous: state,
               state: newValue,
               dispatch: updateState,
-              cancel: cancelUpdate,
+              cancel: cancelUpdate
             }) as unknown as boolean | Promise<any>
 
             if (_isPromise(cancelStateUpdate)) {
@@ -751,13 +696,13 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       persistence,
       hydrated,
       state,
-      init.name,
+      init.name
     ]
   ) as Dispatch<SetStateAction<R>>
 
   useEffect(() => {
     async function storageListener() {
-      if (typeof localStorage !== "undefined") {
+      if (typeof localStorage !== 'undefined') {
         if (_isDefined(localStorage[$atomKey])) {
           try {
             const newState = JSON.parse(localStorage[$atomKey])
@@ -775,15 +720,15 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       }
     }
     if (persistence) {
-      if (typeof window !== "undefined") {
-        if (typeof localStorage !== "undefined") {
+      if (typeof window !== 'undefined') {
+        if (typeof localStorage !== 'undefined') {
           if ($persistence === localStorage) {
             const canListen = _isDefined(window.addEventListener)
             if (canListen) {
               if (sync) {
-                window.addEventListener("storage", storageListener)
+                window.addEventListener('storage', storageListener)
                 return () => {
-                  window.removeEventListener("storage", storageListener)
+                  window.removeEventListener('storage', storageListener)
                 }
               }
             }
@@ -889,7 +834,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   useEffect(() => {
     async function updateStorage() {
-      if (typeof localStorage !== "undefined") {
+      if (typeof localStorage !== 'undefined') {
         const storageItem = await $persistence.getItem($atomKey)
         if (_isDefined(storageItem) || storageItem === null) {
           // Only remove from localStorage if persistence is false
@@ -908,28 +853,18 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     updateStorage()
   }, [init.name, persistence, state])
 
-  const atomGet = useCallback(
-    function <R>($atom: useAtomType<R> | Atom<R, any>): R {
-      const $key =
-        prefix === false
-          ? ($atom as any)["atom-name"]
-          : [prefix, ($atom as any)["atom-name"]].join("-")
-      const $atomValue = defaultAtomsValues[$key]
-      return $atomValue
-    },
-    [prefix]
-  )
-
   const filterRead = useCallback(
-    function <R>($filter: (() => R | Promise<R>) | Filter<R | Promise<R>>): R {
+    function <R>(
+      $filter: (() => R | Promise<R>) | Selector<R | Promise<R>>
+    ): R {
       const $key =
-        prefix === false
-          ? ($filter as any)["filter-name"]
-          : [prefix, ($filter as any)["filter-name"]].join("-")
+        storeName === false
+          ? ($filter as any)['init-object']
+          : [storeName, ($filter as any)['filter-name']].join('-')
       const $filterValue = defaultFiltersValues[$key]
       return $filterValue
     },
-    [prefix]
+    [storeName]
   )
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -937,16 +872,15 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   const __actions = useMemo(
     () =>
       Object.fromEntries(
-        Object.keys(actions).map((key) => [
+        Object.keys(actions).map(key => [
           key,
           (args?: any) =>
             (actions as any)[key]({
               args,
               state,
               dispatch: updateState as Dispatch<SetStateAction<R>>,
-              get: getValue,
-              read: filterRead,
-            }),
+              get: getValue
+            })
         ])
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -956,7 +890,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
   return [
     state,
     updateState,
-    __actions as Required<ActionsObjectType<ActionsArgs>>,
+    __actions as Required<ActionsObjectType<ActionsArgs>>
   ]
 }
 
@@ -964,10 +898,10 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
  * Creates an atom containing state
  */
 export function atom<R, ActionsArgs = any>(
-  $init: Omit<Atom<R, ActionsArgs>, "name"> | Omit<Filter<R>, "name">
+  $init: Omit<Atom<R, ActionsArgs>, 'name'> | Omit<Selector<R>, 'name'>
 ) {
-  if ("get" in $init) {
-    return filter($init as Filter<R>)
+  if ('get' in $init) {
+    return filter($init as Selector<R>)
   } else {
     const init = $init as Atom<R, ActionsArgs>
     if (!init.name) {
@@ -981,8 +915,8 @@ export function atom<R, ActionsArgs = any>(
     }
 
     const useCreate = () => useAtomCreate<R, ActionsArgs>(init)
-    useCreate["atom-name"] = init.name
-    useCreate["init-object"] = init
+    useCreate['atom-name'] = init.name
+    useCreate['init-object'] = init
 
     useCreate.key = init.name
 
@@ -1003,7 +937,7 @@ const filterObservables: {
 
 const subscribedFilters: any = {}
 
-export function filter<R>(init: Filter<R | Promise<R>>) {
+export function filter<R>(init: Selector<R | Promise<R>>) {
   if (!init.name) {
     init.name = init.key as string
   }
@@ -1012,7 +946,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     filtersInitializeObjects[init?.name] = init
   }
 
-  const { name = "" } = filtersInitializeObjects[init?.name]
+  const { name = '' } = filtersInitializeObjects[init?.name]
 
   let filterDeps: any = {}
 
@@ -1027,15 +961,15 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
   const useFilterGet = () => {
     const hookCall = useMemo(() => Math.random(), [])
 
-    const { prefix } = useContext(atomicStateContext)
+    const { storeName } = useContext(atomicStateContext)
 
-    const $prefix = prefix === false ? "" : (prefix as string)
+    const $prefix = storeName === false ? '' : (storeName as string)
 
     if (!filterDeps[$prefix]) {
       filterDeps[$prefix] = {}
     }
 
-    const $filterKey = prefix === false ? name : prefix + name
+    const $filterKey = storeName === false ? name : storeName + '-' + name
 
     if (!filterObservables[$filterKey]) {
       filterObservables[$filterKey] = createObserver()
@@ -1047,7 +981,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
       function notifyOtherFilters(hookCall: any, payload: any) {
         filterObserver.notify($filterKey, hookCall, payload)
       },
-      [prefix, hookCall, $filterKey]
+      [storeName, hookCall, $filterKey]
     )
 
     for (let dep in filterDeps[$prefix]) {
@@ -1064,45 +998,46 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     const $$filterGet = ($atom: any) => {
       subscribedFilters[$filterKey] = true
+
       if (!_isFunction($atom)) {
         const depsKey =
-          prefix === false ? $atom.name : [prefix, $atom.name].join("-")
+          storeName === false ? $atom.name : [storeName, $atom.name].join('-')
         filterDeps[$prefix][depsKey] = true
         depsValues[depsKey] = defaultAtomsValues[depsKey]
       } else {
         const depsKey =
-          prefix === false
-            ? $atom?.["init-object"]?.name
-            : [prefix, $atom?.["init-object"]?.name].join("-")
+          storeName === false
+            ? $atom?.['init-object']?.name
+            : [storeName, $atom?.['init-object']?.name].join('-')
         filterDeps[$prefix][depsKey] = true
         depsValues[depsKey] = defaultAtomsValues[depsKey]
       }
 
       const __valuesKey =
-        prefix === false ? atom.name : [prefix, atom.name].join("-")
+        storeName === false ? atom.name : [storeName, atom.name].join('-')
       const __valuesKeyNames =
-        prefix === false
-          ? $atom["atom-name"]
-          : [prefix, $atom["atom-name"]].join("-")
+        storeName === false
+          ? $atom['atom-name']
+          : [storeName, $atom['atom-name']].join('-')
 
       return !_isFunction($atom)
         ? !_isDefined(defaultAtomsValues[__valuesKey])
           ? $atom.default
           : defaultAtomsValues[__valuesKey]
         : !_isDefined(defaultAtomsValues[__valuesKeyNames])
-        ? $atom["init-object"].default
+        ? $atom['init-object'].default
         : defaultAtomsValues[__valuesKeyNames]
     }
 
     const $$filterRead = ($filter: any) => {
       subscribedFilters[$filterKey] = true
       const __filtersKey = !_isFunction($filter)
-        ? prefix === false
+        ? storeName === false
           ? $filter.name
-          : [prefix, $filter.name].join("-")
-        : prefix === false
-        ? $filter["filter-name"]
-        : [prefix, $filter["filter-name"]].join("-")
+          : [storeName, $filter.name].join('-')
+        : storeName === false
+        ? $filter['filter-name']
+        : [storeName, $filter['filter-name']].join('-')
 
       if (!_isFunction($filter)) {
         readFilters[__filtersKey] = true
@@ -1118,21 +1053,21 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
           ? $filter.default
           : defaultFiltersValues[__filtersKey]
         : !_isDefined(defaultFiltersValues[__filtersKey])
-        ? $filter["init-object"]?.default
+        ? $filter['init-object']?.default
         : defaultFiltersValues[__filtersKey]
     }
 
     const getObject = useMemo(
       () => ({
         get: ($atom: any) => {
-          const isFilter = typeof $atom?.["init-object"].get === "function"
+          const isFilter = typeof $atom?.['init-object'].get === 'function'
           return isFilter ? $$filterRead($atom) : $$filterGet($atom)
         },
         read: ($filter: any) => {
           return $$filterRead($filter)
-        },
+        }
       }),
-      [prefix]
+      [storeName]
     )
 
     function getInitialValue(): any {
@@ -1152,7 +1087,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
                     defaultFiltersValues[$filterKey] = firstResolved
                     // This hook will notify itself if any deps have changed
                     if (_isDefined(firstResolved)) {
-                      notifyOtherFilters("", firstResolved)
+                      notifyOtherFilters('', firstResolved)
                     }
                   })()
                   return firstResolved
@@ -1160,7 +1095,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
               } catch (err) {
               } finally {
                 if (_isDefined(firstResolved)) {
-                  notifyOtherFilters("", firstResolved)
+                  notifyOtherFilters('', firstResolved)
                 }
                 return firstResolved
               }
@@ -1190,7 +1125,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
         initialValue.then((e: any) => {
           defValue = e
           defaultFiltersValues[$filterKey] = e
-          filterObserver.notify($filterKey, "", e)
+          filterObserver.notify($filterKey, '', e)
         })
       } else {
         defValue = initialValue
@@ -1215,7 +1150,7 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
     )
 
     useEffect(() => {
-      atomObservables[$filterKey]?.notify($filterKey, "", filterValue as any)
+      atomObservables[$filterKey]?.notify($filterKey, '', filterValue as any)
     }, [filterValue])
 
     useEffect(() => {
@@ -1353,20 +1288,20 @@ export function filter<R>(init: Filter<R | Promise<R>>) {
 
     return filterValue
   }
-  useFilterGet["filter-name"] = name
-  useFilterGet["init-object"] = init
-  return useFilterGet as unknown as Filter<R>
+  useFilterGet['filter-name'] = name
+  useFilterGet['init-object'] = init
+  return useFilterGet as unknown as Selector<R>
 }
 
 export const selector = filter
 
 export function useFilter<T>(
-  f: (() => T | Promise<T>) | Filter<T | Promise<T>>
+  f: (() => T | Promise<T>) | Selector<T | Promise<T>>
 ) {
-  const { prefix } = useContext(atomicStateContext)
+  const { storeName } = useContext(atomicStateContext)
 
   if (_isFunction(f)) {
-    const $f = (f as any)["init-object"]
+    const $f = (f as any)['init-object']
     if ($f !== filtersInitializeObjects[$f?.name]) {
       if (_isDefined($f)) {
         ;(filtersInitializeObjects[$f?.name] || {}).get = $f?.get
@@ -1382,28 +1317,29 @@ export function useFilter<T>(
     }
   }
 
-  return (
-    !_isFunction(f)
-      ? (() => {
-          if (!f.name) {
-            // @ts-ignore
-            f.name = f.key as string
+  const renderdFilter = !_isFunction(f)
+    ? (() => {
+        if (!f.name) {
+          // @ts-ignore
+          f.name = f.key as string
+        }
+        const __filterSKey =
+          storeName === false ? f.name : [storeName, f.name].join('-')
+        if (!_isDefined(objectFilters[__filterSKey])) {
+          objectFilters[__filterSKey] = filter(
+            filtersInitializeObjects[f.name] as any
+          )
+        } else {
+          if (objectFilters[__filterSKey]['init-object'] !== f) {
+            objectFilters[__filterSKey] = filter(f as any)
           }
-          const __filterSKey =
-            prefix === false ? f.name : [prefix, f.name].join("-")
-          if (!_isDefined(objectFilters[__filterSKey])) {
-            objectFilters[__filterSKey] = filter(
-              filtersInitializeObjects[f.name] as any
-            )
-          } else {
-            if (objectFilters[__filterSKey]["init-object"] !== f) {
-              objectFilters[__filterSKey] = filter(f as any)
-            }
-          }
-          return objectFilters[__filterSKey]()
-        })()
-      : (f as any)()
-  ) as T
+        }
+        return objectFilters[__filterSKey]()
+      })()
+    : (f as any)()
+
+  // @ts-ignore
+  return (renderdFilter ?? f['init-object']?.default) as T
 }
 
 const objectAtoms: any = {}
@@ -1420,7 +1356,7 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
     if (!_isDefined(objectAtoms[atom.name])) {
       objectAtoms[atom.name] = createAtom(atom)
     } else {
-      if (objectAtoms[atom.name]["init-object"] !== atom) {
+      if (objectAtoms[atom.name]['init-object'] !== atom) {
         objectAtoms[atom.name] = createAtom(atom)
       }
     }
@@ -1436,7 +1372,12 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
     !_isFunction(atom)
       ? objectAtoms[(atom.name ?? atom.key)!]()
       : (atom as unknown as () => void)()
-  ) as [R, (cb: ((c: R) => R) | R) => void, ActionsObjectType<ActionsArgs>]
+  ) as [
+    R,
+    React.Dispatch<SetStateAction<R>>,
+    //  (cb: ((c: R) => R) | R) => void
+    ActionsObjectType<ActionsArgs>
+  ]
 }
 
 /**
@@ -1454,15 +1395,15 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
       [key: string]: any
     }
   >({
-    ...(config as Omit<Atom<R>, "actions">),
+    ...(config as Omit<Atom<R>, 'actions'>),
     actions: {
       /**
        * Should be used only with object values
        */
       setPartialvalue({ dispatch, args }) {
-        if (typeof args === "function") {
-          dispatch((prev) => ({ ...prev, ...args(prev as Required<R>) }))
-        } else dispatch((prev) => ({ ...prev, ...args }))
+        if (typeof args === 'function') {
+          dispatch(prev => ({ ...prev, ...args(prev as Required<R>) }))
+        } else dispatch(prev => ({ ...prev, ...args }))
       },
       // Can be used with non-object values
       setValue({ dispatch, args }) {
@@ -1475,8 +1416,8 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
       reset({ dispatch }) {
         dispatch(config.default as R)
       },
-      ...config.actions,
-    },
+      ...config.actions
+    }
   })
 
   function useGlobalStore() {
@@ -1493,10 +1434,10 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
 /**
  * Get an atom's value
  */
-export function useValue<R>(atom: useAtomType<R> | Atom<R, any> | Filter<R>) {
+export function useValue<R>(atom: useAtomType<R> | Atom<R, any> | Selector<R>) {
   // Check if this is a filter
-  if (typeof (atom as any)?.["init-object"].get !== "undefined")
-    return useFilter<R>(atom as Filter<R>)
+  if (typeof (atom as any)?.['init-object'].get !== 'undefined')
+    return useFilter<R>(atom as Selector<R>)
 
   // @ts-ignore
   return useAtom(atom)[0] as const
@@ -1534,22 +1475,30 @@ export function atomProvider<R>(states: {
     const v = states[name]
     const renderedAtom = useAtom(v)
 
-    const RR: typeof renderedAtom & {
+    type RenderedState = typeof renderedAtom & {
       value?: any
       dispatch?: any
       actions?: any
-    } = renderedAtom
+    }
 
-    RR.value = renderedAtom[0]
-    RR.dispatch = renderedAtom[1]
-    RR.actions = renderedAtom[2]
-
+    let RR: RenderedState = renderedAtom
+    // @ts-ignore
+    if (typeof v['init-object']?.get === 'function') {
+      RR = [RR] as unknown as RenderedState
+      RR.value = RR
+    } else {
+      RR.value = renderedAtom[0]
+      RR.dispatch = renderedAtom[1]
+      RR.actions = renderedAtom[2]
+    }
     return RR as typeof renderedAtom & {
       value: (typeof RR)[0]
       dispatch: (typeof RR)[1]
       actions: (typeof RR)[2]
     }
   }
+
+  useThisAtom.stores = states
 
   useThisAtom.value = function useThisAtomValue<E extends K>(name: E) {
     const v = states[name]
@@ -1569,21 +1518,7 @@ export function atomProvider<R>(states: {
   return useThisAtom
 }
 
-/**
- * Create a single provider hook with filters
- */
-export function filterProvider<R>(states: {
-  [e in keyof R]: Filter<R[e]>
-}) {
-  type K = keyof typeof states
-
-  return function useThisFilter<E extends K>(name: E) {
-    const v = states[name]
-    return useFilter(v)
-  }
-}
-
-export const selectorProvider = filterProvider
+export const stateProvider = atomProvider
 
 const storageOvservable = (() => {
   const emm = newObservable()
@@ -1599,7 +1534,7 @@ export function useStorage<K = any>(defaults?: K): K {
   async function updateStore() {
     let $keys: any = {}
 
-    if (typeof localStorage !== "undefined") {
+    if (typeof localStorage !== 'undefined') {
       for (let k in localStorage) {
         if (!k.match(/clear|getItem|key|length|removeItem|setItem/)) {
           try {
@@ -1620,9 +1555,9 @@ export function useStorage<K = any>(defaults?: K): K {
   }, [])
 
   useEffect(() => {
-    storageOvservable.addListener("store-changed", updateStore)
+    storageOvservable.addListener('store-changed', updateStore)
     return () => {
-      storageOvservable.removeListener("store-changed", updateStore)
+      storageOvservable.removeListener('store-changed', updateStore)
     }
   }, [])
   return keys
@@ -1637,10 +1572,10 @@ export const storage = {
    * Set an item in `localStorage`. Its value will be serialized as JSON
    */
   set<T = any>(k: string, v: T) {
-    if (typeof localStorage !== "undefined") {
+    if (typeof localStorage !== 'undefined') {
       if (_isFunction(localStorage.setItem)) {
         localStorage.setItem(k, JSON.stringify(v))
-        storageOvservable.emit("store-changed", v)
+        storageOvservable.emit('store-changed', v)
       }
     }
   },
@@ -1648,10 +1583,10 @@ export const storage = {
    * Remove a `localStorage` item
    */
   async remove(k: string) {
-    if (typeof localStorage !== "undefined") {
+    if (typeof localStorage !== 'undefined') {
       if (_isFunction(localStorage.removeItem)) {
         localStorage.removeItem(k)
-        storageOvservable.emit("store-changed", {})
+        storageOvservable.emit('store-changed', {})
       }
     }
   },
@@ -1661,7 +1596,7 @@ export const storage = {
    * is an invalid JSON format, the default value passed in the second argument will be returned
    */
   get<T = any>(k: string, def: T = null as unknown as T): T {
-    if (typeof localStorage !== "undefined") {
+    if (typeof localStorage !== 'undefined') {
       if (_isFunction(localStorage.getItem)) {
         try {
           return JSON.parse(localStorage.getItem(k) as string)
@@ -1678,7 +1613,7 @@ export const storage = {
     } else {
       return def as T
     }
-  },
+  }
 }
 
 /**
@@ -1689,7 +1624,7 @@ export const session = {
    * Set an item in `sessionStorage`. Its value will be serialized as JSON
    */
   set<T = any>(k: string, v: T) {
-    if (typeof sessionStorage !== "undefined") {
+    if (typeof sessionStorage !== 'undefined') {
       if (_isFunction(sessionStorage.setItem)) {
         sessionStorage.setItem(k, JSON.stringify(v))
       }
@@ -1699,7 +1634,7 @@ export const session = {
    * Remove a `sessionStorage` item
    */
   async remove(k: string) {
-    if (typeof sessionStorage !== "undefined") {
+    if (typeof sessionStorage !== 'undefined') {
       if (_isFunction(sessionStorage.removeItem)) {
         sessionStorage.removeItem(k)
       }
@@ -1711,7 +1646,7 @@ export const session = {
    * is an invalid JSON format, the default value passed in the second argument will be returned
    */
   get<T = any>(k: string, def: T = null as unknown as T): T {
-    if (typeof sessionStorage !== "undefined") {
+    if (typeof sessionStorage !== 'undefined') {
       if (_isFunction(sessionStorage.getItem)) {
         try {
           return JSON.parse(sessionStorage.getItem(k) as string)
@@ -1728,7 +1663,7 @@ export const session = {
     } else {
       return def as T
     }
-  },
+  }
 }
 
 /**
@@ -1742,7 +1677,7 @@ export function useStorageItem<T = any>(
   const [value, setValue] = useState(def)
 
   const itemObserver = () => {
-    if (typeof localStorage !== "undefined") {
+    if (typeof localStorage !== 'undefined') {
       if (!jsonEquality(localStorage[k], def)) {
         try {
           setValue(JSON.parse(localStorage[k]))
@@ -1755,9 +1690,9 @@ export function useStorageItem<T = any>(
 
   useEffect(() => {
     itemObserver()
-    storageOvservable.addListener("store-changed", itemObserver)
+    storageOvservable.addListener('store-changed', itemObserver)
     return () => {
-      storageOvservable.removeListener("store-changed", itemObserver)
+      storageOvservable.removeListener('store-changed', itemObserver)
     }
   }, [])
 
