@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-<img src="./documenation/atomic-state.svg" height="350px" width="350px" />
+<img src="./documentation/raku.jpeg" height="350px" width="350px" />
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
 <img src="https://img.shields.io/github/stars/atomic-state/atomic-state.svg?style=social&label=Star" alt="Github Stars"/>
 </p>
 
-<p align="center"> Atomic State is a state management library for React </p>
+<p align="center">Atomic State is a state management library for React</p>
 
 Getting started:
 
@@ -28,4 +28,4 @@ Or with yarn:
 yarn add atomic-state
 ```
 
-[Getting started](https://atomic-state.netlify.app/docs)
+[Getting started](https://atomic-state.vercel.app/docs)
