@@ -21,10 +21,6 @@ export function getAtomValue<R>(
     : ($atom as any)['atom-name']
   const $atomValue = defaultAtomsValues.get($key)
 
-  console.log({
-    defaultAtomsValues,
-    $key
-  })
   return $atomValue
 }
 
