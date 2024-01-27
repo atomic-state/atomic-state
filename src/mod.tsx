@@ -1474,6 +1474,18 @@ export function useActions<R, ActionsArgs = any>(
   // @ts-ignore
   return useAtom(atom)[2] as Required<ActionsObjectType<ActionsArgs>>
 }
+
+/**
+ * Get an atom's value and actions
+ */
+export function useValueAndActions<R, ActionsArgs = any>(
+  atom: useAtomType<R, ActionsArgs> | Atom<R, ActionsArgs>
+) {
+  // @ts-ignore
+  const [value, , actions] = useAtom(atom)
+  return [value, actions] as const
+}
+
 export const useAtomActions = useActions
 
 /**

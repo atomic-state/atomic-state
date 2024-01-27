@@ -16,6 +16,7 @@ export {
   takeSnapshot,
   useActions,
   useAtom,
+  useValueAndActions,
   useDispatch,
   useStorage,
   useStorageItem,
