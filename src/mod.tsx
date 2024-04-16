@@ -1393,7 +1393,7 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
 }
 
 /**
- * Creates a store with the `setPartialvalue`, `replace` and `setValue` methods.
+ * Creates a store with the `setPartialvalue`, `setValue` and `reset`  methods.
  * It returns a hook that returns an array with the value and the actions
  */
 export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
@@ -1441,6 +1441,24 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
   useGlobalStore.atom = globalStoreState
 
   return useGlobalStore
+}
+
+/**
+ * Creates a store with the `setPartialvalue`, `setValue` and `reset`  methods.
+ * It uses `createAtomicHook` under the hood but instead of returing an array, it returns an object with the store value and actions merged
+ */
+
+export function createStore<R>(config: Partial<Atom<R>> = {}) {
+  const use$tore = createAtomicHook(config)
+
+  return function useStore() {
+    const [storeValue, storeActions] = use$tore()
+
+    return {
+      ...storeValue,
+      ...storeActions
+    }
+  }
 }
 
 /**
