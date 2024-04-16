@@ -1,4 +1,4 @@
-name: "Security analysis with CodeQL"
+name: 'Security analysis with CodeQL'
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     # The branches below must be a subset of the branches above
     branches: [master]
   schedule:
-    - cron: "0 10 * * 0" # At 10:00 on Sunday
+    - cron: '0 10 * * 0' # At 10:00 on Sunday
 
 jobs:
   analyze:
@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["typescript", "javascript"]
+        language: ['typescript', 'javascript']
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

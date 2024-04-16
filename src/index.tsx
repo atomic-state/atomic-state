@@ -25,7 +25,8 @@ export {
   createAtomicHook,
   createPersistence,
   setAtom,
-  getActions
+  getActions,
+  createStore
 } from './mod'
 
 export { getAtomValue, getAtom, getValue } from './store'
