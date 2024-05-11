@@ -1451,14 +1451,30 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
 export function createStore<R>(config: Partial<Atom<R>> = {}) {
   const use$tore = createAtomicHook(config)
 
-  return function useStore() {
-    const [storeValue, storeActions] = use$tore()
+  const use$toreValue = atom(config as Atom<R>)
 
-    return {
-      ...storeValue,
-      ...storeActions
-    }
+  function useStore() {
+    const store = (
+      _isDefined((config as any)?.get) ? useValue(use$toreValue) : use$tore()
+    ) as ReturnType<typeof use$tore>
+
+    const storeValue = store?.[0]
+
+    const storeActions = store?.[1]
+
+    return Array.isArray(store)
+      ? {
+          ...storeValue,
+          ...storeActions
+        }
+      : (store as typeof config extends Selector
+          ? R
+          : typeof storeValue & typeof storeActions)
   }
+
+  useStore.atom = use$tore.atom
+
+  return useStore
 }
 
 /**
