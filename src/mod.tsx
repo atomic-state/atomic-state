@@ -1401,6 +1401,7 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
     R,
     {
       setPartialvalue: Partial<R> | ((v: Required<R>) => Partial<R>)
+      setPartial: Partial<R> | ((v: Required<R>) => Partial<R>)
       setValue: R | ((v: Required<R>) => R)
       reset: any
     } & {
@@ -1413,6 +1414,11 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
        * Should be used only with object values
        */
       setPartialvalue({ dispatch, args }) {
+        if (typeof args === 'function') {
+          dispatch(prev => ({ ...prev, ...args(prev as Required<R>) }))
+        } else dispatch(prev => ({ ...prev, ...args }))
+      },
+      setPartial({ dispatch, args }) {
         if (typeof args === 'function') {
           dispatch(prev => ({ ...prev, ...args(prev as Required<R>) }))
         } else dispatch(prev => ({ ...prev, ...args }))
@@ -1476,6 +1482,9 @@ export function createStore<R>(config: Partial<Atom<R>> = {}) {
 
   return useStore
 }
+
+export const store = createStore
+export const atomicHook = createAtomicHook
 
 /**
  * Get an atom's value
