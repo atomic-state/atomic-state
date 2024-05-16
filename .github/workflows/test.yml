@@ -24,5 +24,5 @@ jobs:
             ${{ runner.os }}-
       - name: Installing dependencies
         run: npm install
-      - name: Executing linter
+      - name: Executing tests
         run: npm run compile && node --run test
