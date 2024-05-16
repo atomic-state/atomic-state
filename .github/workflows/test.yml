@@ -1,20 +1,28 @@
-name: Tests with JEST
+on: Tests
 on: [push, workflow_call, pull_request]
 jobs:
-  test:
-    name: Test on node ${{ matrix.node_version }} and ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        node_version: ['16']
-        os: [ubuntu-latest, windows-latest]
-
+  lint:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node_version }}
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node_version }}
-          cache: 'npm'
-      - name: Testing
-        run: npm install && npm run compile && npm test
+          node-version: "22.x"
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
+      - name: Caching node_modules/
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+      - name: Installing dependencies
+        run: npm install
+      - name: Executing linter
+        run: npm run compile && node --run test
