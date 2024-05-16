@@ -1,4 +1,4 @@
-on: Tests
+name: Tests
 on: [push, workflow_call, pull_request]
 jobs:
   lint:
