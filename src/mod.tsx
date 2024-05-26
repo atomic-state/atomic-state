@@ -279,26 +279,30 @@ export const AtomicState: React.FC<{
   storeName = false,
   persistenceProvider = defaultPersistenceProvider
 }) => {
-  if (def) {
-    for (let atomKey in def) {
-      const defaultsKey =
-        storeName === false ? atomKey : `${storeName}-${atomKey}`
-      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-        defaultAtomsValues.set(defaultsKey, def[atomKey])
-        defaultAtomsInAtomic.set(defaultsKey, true)
+  async function f() {
+    if (def) {
+      for (let atomKey in def) {
+        const defaultsKey =
+          storeName === false ? atomKey : `${storeName}-${atomKey}`
+        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+          defaultAtomsValues.set(defaultsKey, await def[atomKey])
+          defaultAtomsInAtomic.set(defaultsKey, true)
+        }
+      }
+    }
+    if (value) {
+      for (let atomKey in value) {
+        const defaultsKey =
+          storeName === false ? atomKey : `${storeName}-${atomKey}`
+        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+          defaultAtomsValues.set(defaultsKey, await value[atomKey])
+          defaultAtomsInAtomic.set(defaultsKey, true)
+        }
       }
     }
   }
-  if (value) {
-    for (let atomKey in value) {
-      const defaultsKey =
-        storeName === false ? atomKey : `${storeName}-${atomKey}`
-      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-        defaultAtomsValues.set(defaultsKey, value[atomKey])
-        defaultAtomsInAtomic.set(defaultsKey, true)
-      }
-    }
-  }
+
+  f()
 
   const createdAtoms = Object.values(atomsInitializeObjects) as any
 
