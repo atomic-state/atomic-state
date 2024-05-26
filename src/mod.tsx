@@ -259,6 +259,9 @@ export const AtomicState: React.FC<{
   default?: {
     [key: string]: any
   }
+  value?: {
+    [key: string]: any
+  }
   /**
    * The store name where atoms under the tree will be saved
    */
@@ -272,6 +275,7 @@ export const AtomicState: React.FC<{
 }> = ({
   children,
   default: def,
+  value,
   storeName = false,
   persistenceProvider = defaultPersistenceProvider
 }) => {
@@ -282,6 +286,16 @@ export const AtomicState: React.FC<{
           storeName === false ? atomKey : `${storeName}-${atomKey}`
         if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
           defaultAtomsValues.set(defaultsKey, await def[atomKey])
+          defaultAtomsInAtomic.set(defaultsKey, true)
+        }
+      }
+    }
+    if (value) {
+      for (let atomKey in value) {
+        const defaultsKey =
+          storeName === false ? atomKey : `${storeName}-${atomKey}`
+        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+          defaultAtomsValues.set(defaultsKey, await value[atomKey])
           defaultAtomsInAtomic.set(defaultsKey, true)
         }
       }

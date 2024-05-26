@@ -11,6 +11,7 @@ import { $context } from '../shared'
 export const AtomicStateAsync = async ({
   children,
   default: def,
+  value,
   storeName = false,
   persistenceProvider
 }: {
@@ -19,6 +20,9 @@ export const AtomicStateAsync = async ({
    * Set default values using an atom's key
    */
   default?: {
+    [key: string]: any
+  }
+  value?: {
     [key: string]: any
   }
   /**
@@ -38,6 +42,16 @@ export const AtomicStateAsync = async ({
         storeName === false ? atomKey : `${storeName}-${atomKey}`
       if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
         defaultAtomsValues.set(defaultsKey, await def[atomKey])
+        defaultAtomsInAtomic.set(defaultsKey, true)
+      }
+    }
+  }
+  if (value) {
+    for (let atomKey in value) {
+      const defaultsKey =
+        storeName === false ? atomKey : `${storeName}-${atomKey}`
+      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+        defaultAtomsValues.set(defaultsKey, await value[atomKey])
         defaultAtomsInAtomic.set(defaultsKey, true)
       }
     }
