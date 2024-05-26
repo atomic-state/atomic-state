@@ -1,0 +1,54 @@
+import { StrictMode } from 'react'
+import { PersistenceStoreType } from '../mod'
+import {
+  atomsInitializeObjects,
+  defaultAtomsInAtomic,
+  defaultAtomsValues
+} from '../store'
+import { _isDefined } from '../utils'
+import { $context } from '../shared'
+
+export const AtomicStateAsync = async ({
+  children,
+  default: def,
+  storeName = false,
+  persistenceProvider
+}: {
+  children: any
+  /**
+   * Set default values using an atom's key
+   */
+  default?: {
+    [key: string]: any
+  }
+  /**
+   * The store name where atoms under the tree will be saved
+   */
+  storeName?: string | boolean
+  /**
+   * The persistence provider (optional). It should have the `getItem`, `setItem` and `removeItem` methods.
+   *
+   * @default localStorage
+   */
+  persistenceProvider?: PersistenceStoreType
+}) => {
+  if (def) {
+    for (let atomKey in def) {
+      const defaultsKey =
+        storeName === false ? atomKey : `${storeName}-${atomKey}`
+      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+        defaultAtomsValues.set(defaultsKey, await def[atomKey])
+        defaultAtomsInAtomic.set(defaultsKey, true)
+      }
+    }
+  }
+
+  $context.value = {
+    storeName: storeName === '' ? false : storeName,
+    ...(persistenceProvider && {
+      persistenceProvider
+    })
+  }
+
+  return children
+}

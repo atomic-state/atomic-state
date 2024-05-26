@@ -1,2 +1,9 @@
 'use client'
-export { AtomicState } from '../mod'
+import { AtomicState as AtomicStateSync } from '../mod'
+
+import { AtomicStateAsync } from './AtomicStateAsync'
+
+const AtomicState =
+  typeof window === 'undefined' ? AtomicStateAsync : AtomicStateSync
+
+export { AtomicState }

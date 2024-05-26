@@ -37,6 +37,7 @@ import {
   getAtom,
   getValue
 } from './store'
+import { _isDefined, _isFunction, _isPromise, jsonEquality } from './utils'
 
 export type ActionType<Args, T = any> = (
   args: {
@@ -250,22 +251,6 @@ function AtomInitialize({ atm }: any) {
   return null
 }
 
-function _isDefined(target: any) {
-  return typeof target !== 'undefined'
-}
-
-function _isFunction(target: any) {
-  return typeof target === 'function'
-}
-
-function _isPromise(target: any) {
-  return target instanceof Promise
-}
-
-function jsonEquality(target1: any, target2: any) {
-  return JSON.stringify(target1) === JSON.stringify(target2)
-}
-
 export const AtomicState: React.FC<{
   children: any
   /**
@@ -290,16 +275,20 @@ export const AtomicState: React.FC<{
   storeName = false,
   persistenceProvider = defaultPersistenceProvider
 }) => {
-  if (def) {
-    for (let atomKey in def) {
-      const defaultsKey =
-        storeName === false ? atomKey : `${storeName}-${atomKey}`
-      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-        defaultAtomsValues.set(defaultsKey, def[atomKey])
-        defaultAtomsInAtomic.set(defaultsKey, true)
+  async function forDefs() {
+    if (def) {
+      for (let atomKey in def) {
+        const defaultsKey =
+          storeName === false ? atomKey : `${storeName}-${atomKey}`
+        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+          defaultAtomsValues.set(defaultsKey, await def[atomKey])
+          defaultAtomsInAtomic.set(defaultsKey, true)
+        }
       }
     }
   }
+
+  forDefs()
 
   const createdAtoms = Object.values(atomsInitializeObjects) as any
 
