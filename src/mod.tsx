@@ -252,6 +252,7 @@ function AtomInitialize({ atm }: any) {
 }
 
 export const AtomicState: React.FC<{
+  clientOnly?: boolean
   children: any
   /**
    * Set default values using an atom's key
@@ -277,9 +278,10 @@ export const AtomicState: React.FC<{
   default: def,
   value,
   storeName = false,
+  clientOnly,
   persistenceProvider = defaultPersistenceProvider
 }) => {
-  async function f() {
+  async function getPromiseValues() {
     if (def) {
       for (let atomKey in def) {
         const defaultsKey =
@@ -302,7 +304,28 @@ export const AtomicState: React.FC<{
     }
   }
 
-  f()
+  if (clientOnly) {
+    if (def) {
+      for (let atomKey in def) {
+        const defaultsKey =
+          storeName === false ? atomKey : `${storeName}-${atomKey}`
+        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+          defaultAtomsValues.set(defaultsKey, def[atomKey])
+          defaultAtomsInAtomic.set(defaultsKey, true)
+        }
+      }
+    }
+    if (value) {
+      for (let atomKey in value) {
+        const defaultsKey =
+          storeName === false ? atomKey : `${storeName}-${atomKey}`
+        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+          defaultAtomsValues.set(defaultsKey, value[atomKey])
+          defaultAtomsInAtomic.set(defaultsKey, true)
+        }
+      }
+    }
+  } else getPromiseValues()
 
   const createdAtoms = Object.values(atomsInitializeObjects) as any
 

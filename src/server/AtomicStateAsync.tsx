@@ -15,6 +15,7 @@ export const AtomicStateAsync = async ({
   storeName = false,
   persistenceProvider
 }: {
+  clientOnly?: boolean
   children: any
   /**
    * Set default values using an atom's key
