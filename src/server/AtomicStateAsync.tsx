@@ -1,12 +1,7 @@
-import { StrictMode } from 'react'
 import { PersistenceStoreType } from '../mod'
-import {
-  atomsInitializeObjects,
-  defaultAtomsInAtomic,
-  defaultAtomsValues
-} from '../store'
-import { _isDefined } from '../utils'
 import { $context } from '../shared'
+import { defaultAtomsInAtomic, defaultAtomsValues } from '../store'
+import { _isDefined } from '../utils'
 
 export const AtomicStateAsync = async ({
   children,

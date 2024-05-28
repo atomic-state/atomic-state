@@ -281,51 +281,66 @@ export const AtomicState: React.FC<{
   clientOnly,
   persistenceProvider = defaultPersistenceProvider
 }) => {
-  async function getPromiseValues() {
-    if (def) {
-      for (let atomKey in def) {
-        const defaultsKey =
-          storeName === false ? atomKey : `${storeName}-${atomKey}`
-        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-          defaultAtomsValues.set(defaultsKey, await def[atomKey])
-          defaultAtomsInAtomic.set(defaultsKey, true)
+  if (def) {
+    for (let atomKey in def) {
+      /**
+       *
+       * When promises are passed in nextjs, they are sent as chunks, so here
+       * we try to parse their values
+       */
+
+      let parsedChunk
+
+      const dataChunk = def[atomKey]
+
+      if (dataChunk instanceof Promise) {
+        try {
+          parsedChunk = JSON.parse((dataChunk as any).value)
+        } catch {
+          parsedChunk = dataChunk
         }
+      } else {
+        parsedChunk = dataChunk
       }
-    }
-    if (value) {
-      for (let atomKey in value) {
-        const defaultsKey =
-          storeName === false ? atomKey : `${storeName}-${atomKey}`
-        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-          defaultAtomsValues.set(defaultsKey, await value[atomKey])
-          defaultAtomsInAtomic.set(defaultsKey, true)
-        }
+
+      const defaultsKey =
+        storeName === false ? atomKey : `${storeName}-${atomKey}`
+      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+        defaultAtomsValues.set(defaultsKey, parsedChunk)
+        defaultAtomsInAtomic.set(defaultsKey, true)
       }
     }
   }
+  if (value) {
+    for (let atomKey in value) {
+      /**
+       *
+       * When promises are passed in nextjs, they are sent as chunks, so here
+       * we try to parse their values
+       */
 
-  if (clientOnly) {
-    if (def) {
-      for (let atomKey in def) {
-        const defaultsKey =
-          storeName === false ? atomKey : `${storeName}-${atomKey}`
-        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-          defaultAtomsValues.set(defaultsKey, def[atomKey])
-          defaultAtomsInAtomic.set(defaultsKey, true)
+      let parsedChunk
+
+      const dataChunk = value[atomKey]
+
+      if (dataChunk instanceof Promise) {
+        try {
+          parsedChunk = JSON.parse((dataChunk as any).value)
+        } catch {
+          parsedChunk = dataChunk
         }
+      } else {
+        parsedChunk = dataChunk
+      }
+
+      const defaultsKey =
+        storeName === false ? atomKey : `${storeName}-${atomKey}`
+      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+        defaultAtomsValues.set(defaultsKey, parsedChunk)
+        defaultAtomsInAtomic.set(defaultsKey, true)
       }
     }
-    if (value) {
-      for (let atomKey in value) {
-        const defaultsKey =
-          storeName === false ? atomKey : `${storeName}-${atomKey}`
-        if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-          defaultAtomsValues.set(defaultsKey, value[atomKey])
-          defaultAtomsInAtomic.set(defaultsKey, true)
-        }
-      }
-    }
-  } else getPromiseValues()
+  }
 
   const createdAtoms = Object.values(atomsInitializeObjects) as any
 
