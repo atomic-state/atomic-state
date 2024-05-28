@@ -37,6 +37,7 @@ import {
   getAtom,
   getValue
 } from './store'
+import { _isDefined, _isFunction, _isPromise, jsonEquality } from './utils'
 
 export type ActionType<Args, T = any> = (
   args: {
@@ -250,28 +251,16 @@ function AtomInitialize({ atm }: any) {
   return null
 }
 
-function _isDefined(target: any) {
-  return typeof target !== 'undefined'
-}
-
-function _isFunction(target: any) {
-  return typeof target === 'function'
-}
-
-function _isPromise(target: any) {
-  return target instanceof Promise
-}
-
-function jsonEquality(target1: any, target2: any) {
-  return JSON.stringify(target1) === JSON.stringify(target2)
-}
-
 export const AtomicState: React.FC<{
+  clientOnly?: boolean
   children: any
   /**
    * Set default values using an atom's key
    */
   default?: {
+    [key: string]: any
+  }
+  value?: {
     [key: string]: any
   }
   /**
@@ -287,15 +276,67 @@ export const AtomicState: React.FC<{
 }> = ({
   children,
   default: def,
+  value,
   storeName = false,
+  clientOnly,
   persistenceProvider = defaultPersistenceProvider
 }) => {
   if (def) {
     for (let atomKey in def) {
+      /**
+       *
+       * When promises are passed in nextjs, they are sent as chunks, so here
+       * we try to parse their values
+       */
+
+      let parsedChunk
+
+      const dataChunk = def[atomKey]
+
+      if (dataChunk instanceof Promise) {
+        try {
+          parsedChunk = JSON.parse((dataChunk as any).value)
+        } catch {
+          parsedChunk = dataChunk
+        }
+      } else {
+        parsedChunk = dataChunk
+      }
+
       const defaultsKey =
         storeName === false ? atomKey : `${storeName}-${atomKey}`
       if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-        defaultAtomsValues.set(defaultsKey, def[atomKey])
+        defaultAtomsValues.set(defaultsKey, parsedChunk)
+        defaultAtomsInAtomic.set(defaultsKey, true)
+      }
+    }
+  }
+  if (value) {
+    for (let atomKey in value) {
+      /**
+       *
+       * When promises are passed in nextjs, they are sent as chunks, so here
+       * we try to parse their values
+       */
+
+      let parsedChunk
+
+      const dataChunk = value[atomKey]
+
+      if (dataChunk instanceof Promise) {
+        try {
+          parsedChunk = JSON.parse((dataChunk as any).value)
+        } catch {
+          parsedChunk = dataChunk
+        }
+      } else {
+        parsedChunk = dataChunk
+      }
+
+      const defaultsKey =
+        storeName === false ? atomKey : `${storeName}-${atomKey}`
+      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
+        defaultAtomsValues.set(defaultsKey, parsedChunk)
         defaultAtomsInAtomic.set(defaultsKey, true)
       }
     }
