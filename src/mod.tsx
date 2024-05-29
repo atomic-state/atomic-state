@@ -306,10 +306,9 @@ export const AtomicState: React.FC<{
 
       const defaultsKey =
         storeName === false ? atomKey : `${storeName}-${atomKey}`
-      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-        defaultAtomsValues.set(defaultsKey, parsedChunk)
-        defaultAtomsInAtomic.set(defaultsKey, true)
-      }
+
+      defaultAtomsValues.set(defaultsKey, parsedChunk)
+      defaultAtomsInAtomic.set(defaultsKey, true)
     }
   }
   if (value) {
@@ -337,10 +336,9 @@ export const AtomicState: React.FC<{
 
       const defaultsKey =
         storeName === false ? atomKey : `${storeName}-${atomKey}`
-      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-        defaultAtomsValues.set(defaultsKey, parsedChunk)
-        defaultAtomsInAtomic.set(defaultsKey, true)
-      }
+
+      defaultAtomsValues.set(defaultsKey, parsedChunk)
+      defaultAtomsInAtomic.set(defaultsKey, true)
     }
   }
 
