@@ -36,20 +36,18 @@ export const AtomicStateAsync = async ({
     for (let atomKey in def) {
       const defaultsKey =
         storeName === false ? atomKey : `${storeName}-${atomKey}`
-      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-        defaultAtomsValues.set(defaultsKey, await def[atomKey])
-        defaultAtomsInAtomic.set(defaultsKey, true)
-      }
+
+      defaultAtomsValues.set(defaultsKey, await def[atomKey])
+      defaultAtomsInAtomic.set(defaultsKey, true)
     }
   }
   if (value) {
     for (let atomKey in value) {
       const defaultsKey =
         storeName === false ? atomKey : `${storeName}-${atomKey}`
-      if (!_isDefined(defaultAtomsValues.get(defaultsKey))) {
-        defaultAtomsValues.set(defaultsKey, await value[atomKey])
-        defaultAtomsInAtomic.set(defaultsKey, true)
-      }
+
+      defaultAtomsValues.set(defaultsKey, await value[atomKey])
+      defaultAtomsInAtomic.set(defaultsKey, true)
     }
   }
 
