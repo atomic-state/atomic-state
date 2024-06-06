@@ -3,7 +3,7 @@ import { $context } from '../shared'
 import { defaultAtomsInAtomic, defaultAtomsValues } from '../store'
 import { _isDefined } from '../utils'
 
-export const AtomicStateAsync = async ({
+export async function AtomicStateAsync({
   children,
   default: def,
   value,
@@ -31,7 +31,7 @@ export const AtomicStateAsync = async ({
    * @default localStorage
    */
   persistenceProvider?: PersistenceStoreType
-}) => {
+}) {
   if (def) {
     for (let atomKey in def) {
       const defaultsKey =
