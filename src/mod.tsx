@@ -39,13 +39,22 @@ import {
 } from './store'
 import { _isDefined, _isFunction, _isPromise, jsonEquality } from './utils'
 
-export type ActionType<Args, T = any> = (
-  args: {
-    args: Args
-    state: T
-    dispatch: Dispatch<SetStateAction<T>>
-  } & ActionGet
-) => void
+export type ActionType<T, Args = void> = Args extends void // Conditional type for better inference
+  ? (
+      args?: {
+        // If Args is void, allow the args object to be optional
+        state: T
+        dispatch: Dispatch<SetStateAction<T>>
+      } & ActionGet
+    ) => void
+  : (
+      args: {
+        // If Args is not void, enforce the args object and type Args
+        args: Args
+        state: T
+        dispatch: Dispatch<SetStateAction<T>>
+      } & ActionGet
+    ) => void
 
 /**
  * Atom type
@@ -1476,7 +1485,7 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
         dispatch(config.default as R)
       },
       ...config.actions
-    }
+    } as any
   })
 
   function useGlobalStore() {
