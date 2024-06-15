@@ -39,13 +39,22 @@ import {
 } from './store'
 import { _isDefined, _isFunction, _isPromise, jsonEquality } from './utils'
 
-export type ActionType<Args, T = any> = (
-  args: {
-    args: Args
-    state: T
-    dispatch: Dispatch<SetStateAction<T>>
-  } & ActionGet
-) => void
+export type ActionType<T, Args = void> = Args extends void // Conditional type for better inference
+  ? (
+      args?: {
+        // If Args is void, allow the args object to be optional
+        state: T
+        dispatch: Dispatch<SetStateAction<T>>
+      } & ActionGet
+    ) => void
+  : (
+      args: {
+        // If Args is not void, enforce the args object and type Args
+        args: Args
+        state: T
+        dispatch: Dispatch<SetStateAction<T>>
+      } & ActionGet
+    ) => void
 
 /**
  * Atom type
@@ -1454,17 +1463,24 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
       /**
        * Should be used only with object values
        */
+      // @ts-expect-error
       setPartialvalue({ dispatch, args }) {
         if (typeof args === 'function') {
+          // @ts-expect-error
           dispatch(prev => ({ ...prev, ...args(prev as Required<R>) }))
+          // @ts-expect-error
         } else dispatch(prev => ({ ...prev, ...args }))
       },
+      // @ts-expect-error
       setPartial({ dispatch, args }) {
         if (typeof args === 'function') {
+          // @ts-expect-error
           dispatch(prev => ({ ...prev, ...args(prev as Required<R>) }))
+          // @ts-expect-error
         } else dispatch(prev => ({ ...prev, ...args }))
       },
       // Can be used with non-object values
+      // @ts-expect-error
       setValue({ dispatch, args }) {
         // @ts-ignore
         dispatch(args)
@@ -1472,11 +1488,12 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
       /**
        * Reset the store state to the original value (Taken from `default`)
        */
+      // @ts-expect-error
       reset({ dispatch }) {
         dispatch(config.default as R)
       },
       ...config.actions
-    }
+    } as any
   })
 
   function useGlobalStore() {
