@@ -3,7 +3,7 @@ import { render, fireEvent, waitFor } from '@testing-library/react'
 import { RenderCount, IncreaseButton } from '../mocks/Tes1'
 import { NameDisplay, NameField } from '../mocks/Test2'
 import { RenderCountDouble, IncreaseButton2 } from '../mocks/Test3'
-import { act } from 'react-dom/test-utils'
+import { act } from 'react'
 
 it("Should increase clicks' atom value", async () => {
   const Button = render(<IncreaseButton />)
