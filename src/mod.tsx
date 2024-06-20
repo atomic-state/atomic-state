@@ -39,22 +39,21 @@ import {
 } from './store'
 import { _isDefined, _isFunction, _isPromise, jsonEquality } from './utils'
 
-export type ActionType<T, Args = void> = Args extends void // Conditional type for better inference
+export type ActionType<Args, T = any, Return = any> = T extends undefined
   ? (
-      args?: {
-        // If Args is void, allow the args object to be optional
+      args: {
+        args?: Args
         state: T
         dispatch: Dispatch<SetStateAction<T>>
       } & ActionGet
-    ) => void
+    ) => Return
   : (
       args: {
-        // If Args is not void, enforce the args object and type Args
         args: Args
         state: T
         dispatch: Dispatch<SetStateAction<T>>
       } & ActionGet
-    ) => void
+    ) => Return
 
 /**
  * Atom type
