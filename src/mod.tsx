@@ -16,8 +16,12 @@ import {
   useMemo,
   useRef,
   useState,
-  StrictMode
+  StrictMode,
+  useLayoutEffect
 } from 'react'
+
+const useIsomorphicLayoutEffect =
+  typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 type Observable = {
   addListener(event: string, listener?: any): void
@@ -535,7 +539,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
 
   const hookCall = useMemo(() => `${Math.random()}`.split('.')[1], [])
 
-  if (!($atomKey in atomsEffectsCleanupFunctons)) {
+  if (!atomsEffectsCleanupFunctons.has($atomKey)) {
     atomsEffectsCleanupFunctons.set($atomKey, [])
   }
 
@@ -796,7 +800,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     return () => {}
   }, [init.name, persistence, $persistence])
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     async function loadPersistence() {
       persistenceLoaded[$atomKey] = true
       if (_isDefined(vIfPersistence)) {
