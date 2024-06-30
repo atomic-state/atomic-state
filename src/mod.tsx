@@ -1449,18 +1449,16 @@ export function useAtom<R, ActionsArgs = any>(atom: Atom<R, ActionsArgs>) {
  * Creates a store with the `setPartialvalue`, `setValue` and `reset`  methods.
  * It returns a hook that returns an array with the value and the actions
  */
-export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
-  const globalStoreState = atom<
-    R,
-    {
-      setPartialvalue: Partial<R> | ((v: Required<R>) => Partial<R>)
-      setPartial: Partial<R> | ((v: Required<R>) => Partial<R>)
-      setValue: R | ((v: Required<R>) => R)
-      reset: any
-    } & {
-      [key: string]: any
-    }
-  >({
+export function createAtomicHook<R, Actions = { [k: string]: any }>(
+  config: Partial<Atom<R, Actions>> = {}
+) {
+  type StoreActionsType = {
+    setPartialvalue: Partial<R> | ((v: Required<R>) => Partial<R>)
+    setPartial: Partial<R> | ((v: Required<R>) => Partial<R>)
+    setValue: R | ((v: Required<R>) => R)
+    reset: any
+  }
+  const globalStoreState = atom<R, StoreActionsType & Actions>({
     ...(config as Omit<Atom<R>, 'actions'>),
     actions: {
       /**
@@ -1495,7 +1493,7 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
       reset({ dispatch }) {
         dispatch(config.default as R)
       },
-      ...config.actions
+      ...(config.actions as Actions)
     } as any
   })
 
@@ -1515,10 +1513,12 @@ export function createAtomicHook<R>(config: Partial<Atom<R>> = {}) {
  * It uses `createAtomicHook` under the hood but instead of returing an array, it returns an object with the store value and actions merged
  */
 
-export function createStore<R>(config: Partial<Atom<R>> = {}) {
+export function createStore<R, Actions = { [k: string]: any }>(
+  config: Partial<Atom<R, Actions>> = {}
+) {
   const use$tore = createAtomicHook(config)
 
-  const use$toreValue = atom(config as Atom<R>)
+  const use$toreValue = atom(config as Atom<R, Actions>)
 
   function useStore() {
     const store = (
