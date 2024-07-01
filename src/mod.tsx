@@ -16,12 +16,8 @@ import {
   useMemo,
   useRef,
   useState,
-  StrictMode,
-  useLayoutEffect
+  StrictMode
 } from 'react'
-
-const useIsomorphicLayoutEffect =
-  typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 type Observable = {
   addListener(event: string, listener?: any): void
@@ -800,7 +796,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     return () => {}
   }, [init.name, persistence, $persistence])
 
-  useIsomorphicLayoutEffect(() => {
+  useEffect(() => {
     async function loadPersistence() {
       persistenceLoaded[$atomKey] = true
       if (_isDefined(vIfPersistence)) {
