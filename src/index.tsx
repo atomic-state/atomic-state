@@ -10,6 +10,7 @@ export type {
 
 export {
   atom,
+  create,
   atomProvider,
   stateProvider,
   storage,

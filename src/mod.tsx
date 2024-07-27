@@ -484,11 +484,13 @@ export function setAtom<R = any>(
 
   if (!willCancel) {
     defaultAtomsValues.set($atomKey, newValue)
-    observable.notify(
-      $atomKey,
-      Math.random().toFixed(2),
-      defaultAtomsValues.get($atomKey)
-    )
+    if (observable) {
+      observable.notify(
+        $atomKey,
+        Math.random().toFixed(2),
+        defaultAtomsValues.get($atomKey)
+      )
+    }
   }
 }
 
@@ -1538,6 +1540,29 @@ export function createStore<R, Actions = { [k: string]: any }>(
   useStore.atom = use$tore.atom
 
   return useStore
+}
+
+export function create<R, Actions = { [k: string]: any }>(
+  config: Omit<Atom<R, Actions>, 'name'> | Omit<Selector<R>, 'name'>
+) {
+  const thisAtom = atom(config as Atom<R, Actions> | Selector<R>)
+
+  const all = () => useAtom(thisAtom)
+
+  for (let prop in thisAtom) {
+    // @ts-ignore
+    all[prop] = thisAtom[prop]
+  }
+
+  all.value = () => useValue(thisAtom)
+
+  all.set = (value: R | ((v: R) => R)) => setAtom(thisAtom, value)
+
+  all.actions = getActions(thisAtom)
+
+  all.atom = thisAtom
+
+  return all
 }
 
 export const store = createStore
