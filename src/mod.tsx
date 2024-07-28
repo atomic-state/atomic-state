@@ -64,7 +64,7 @@ export type Atom<T = any, ActionArgs = any> = {
    */
   name?: string
   key: string
-  default?: T | Promise<T> | (() => Promise<T>) | (() => T)
+  default?: T | Promise<T> | (() => Promise<T>)
 
   /**
    * Short for `localStoragePersistence`
@@ -1554,7 +1554,7 @@ export function create<R, Actions = { [k: string]: any }>(
     all[prop] = thisAtom[prop]
   }
 
-  all.value = () => useValue(thisAtom)
+  all.value = () => useValue(thisAtom) as R
 
   all.set = (value: R | ((v: R) => R)) => setAtom(thisAtom, value)
 
