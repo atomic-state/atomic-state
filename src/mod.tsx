@@ -64,7 +64,7 @@ export type Atom<T = any, ActionArgs = any> = {
    */
   name?: string
   key: string
-  default?: T | Promise<T> | (() => Promise<T>)
+  default?: T | Promise<T> | (() => Promise<T>) | (() => T)
 
   /**
    * Short for `localStoragePersistence`
