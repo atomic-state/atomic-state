@@ -1547,7 +1547,7 @@ export function create<R, Actions = { [k: string]: any }>(
 ) {
   const thisAtom = atom(config as Atom<R, Actions> | Selector<R>)
 
-  const all = () => useAtom(thisAtom)
+  const all = () => useAtom<R>(thisAtom as Atom<R, Actions>)
 
   for (let prop in thisAtom) {
     // @ts-ignore
