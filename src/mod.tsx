@@ -502,6 +502,7 @@ export function getActions<R = any, A = any>($atom: Atom<R, A>) {
   for (let action in init.actions) {
     _actions[action] = (args: (typeof init.actions)[typeof action]) =>
       (init.actions as any)[action]({
+        state: defaultAtomsValues.get(init.key),
         args,
         dispatch: (v: any) => setAtom($atom, v),
         get: getAtom,
