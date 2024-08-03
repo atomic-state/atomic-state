@@ -64,7 +64,7 @@ export type Atom<T = any, ActionArgs = any> = {
    */
   name?: string
   key: string
-  default?: T | Promise<T> | (() => Promise<T>)
+  default?: T | Promise<T> | (() => Promise<T>) | (() => T)
 
   /**
    * Short for `localStoragePersistence`
@@ -1262,9 +1262,9 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
           }
         }
 
-        try {
-          if (!$resolving[$filterKey]) {
-            $resolving[$filterKey] = true
+        if (!$resolving[$filterKey]) {
+          $resolving[$filterKey] = true
+          try {
             const newValue =
               e.storeName in filterDeps[$prefix] || e.storeName in readFilters
                 ? filtersInitializeObjects.get(name)?.get(getObject)
@@ -1287,10 +1287,14 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
                   }
                 }
               }
-              $resolving[$filterKey] = false
             })()
+          } catch (err) {
+          } finally {
+            queueMicrotask(() => {
+              $resolving[$filterKey] = false
+            })
           }
-        } catch (err) {}
+        }
       }
     }
 
@@ -1398,6 +1402,7 @@ export function useFilter<T>(
             objectFilters[__filterSKey] = filter(f as any)
           }
         }
+
         return objectFilters[__filterSKey]()
       })()
     : (f as any)()
