@@ -389,10 +389,10 @@ const persistenceLoaded: any = {}
  * You can pass a string with the `prefix` you used in the `AtomicState` root component
  * if you want only atoms and filters using that prefix.
  */
-export function takeSnapshot(storeName?: string) {
+export function takeSnapshot(storeName: string = 'default') {
   let stores: any = {}
 
-  for (let atomKey in defaultAtomsValues) {
+  for (let atomKey of defaultAtomsValues.keys()) {
     const [prefixName, atomName] = atomKey.split('-')
 
     const storeExists = atomKey.includes('-')
@@ -416,7 +416,7 @@ export function takeSnapshot(storeName?: string) {
     }
   }
 
-  for (let filterKey in defaultFiltersValues) {
+  for (let filterKey of defaultFiltersValues.keys()) {
     const [prefixName, filterName] = filterKey.split('-')
 
     const storeExists = filterKey.includes('-')
@@ -1561,12 +1561,13 @@ export function create<R, Actions = { [k: string]: any }>(
   }
 
   all.value = () => useValue(thisAtom) as R
-
   all.set = (value: R | ((v: R) => R)) => setAtom(thisAtom, value)
-
   all.actions = getActions(thisAtom)
-
   all.atom = thisAtom
+
+  all.useValue = all.value
+  all.setValue = all.set
+  all.useAtom = () => useAtom<R>(thisAtom as Atom<R, Actions>)
 
   return all
 }
