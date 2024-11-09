@@ -1560,7 +1560,7 @@ export function create<R, Actions = { [k: string]: any }>(
     all[prop] = thisAtom[prop]
   }
 
-  all.value = () => useValue(thisAtom) as R
+  all.value = () => getValue(thisAtom) as R
   all.set = (value: R | ((v: R) => R)) => setAtom(thisAtom, value)
   all.actions = getActions(thisAtom)
   all.atom = thisAtom
