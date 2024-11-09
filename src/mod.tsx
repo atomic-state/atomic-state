@@ -1565,7 +1565,7 @@ export function create<R, Actions = { [k: string]: any }>(
   all.actions = getActions(thisAtom)
   all.atom = thisAtom
 
-  all.useValue = all.value
+  all.useValue = () => useValue(thisAtom) as R
   all.setValue = all.set
   all.useAtom = () => useAtom<R>(thisAtom as Atom<R, Actions>)
 
