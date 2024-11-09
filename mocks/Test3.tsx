@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { useDispatch, useValue } from '../'
 import { clicksState, doubleClicksState, tripleClicksState } from './atoms'
 
@@ -15,11 +15,6 @@ export const RenderCountDouble = () => {
 
 export const IncreaseButton2 = () => {
   const setAtomValue = useDispatch(clicksState)
-
-  useEffect(() => {
-    // Reset count when mounting to prevent conflicts with other tests
-    setAtomValue(0)
-  }, [])
 
   return (
     <div>

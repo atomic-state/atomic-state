@@ -904,9 +904,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
             $persistence.removeItem($atomKey)
           } else {
             if (_isDefined(state)) {
-              if (!jsonEquality(state, init.default)) {
-                $persistence.setItem($atomKey, JSON.stringify(state))
-              }
+              $persistence.setItem($atomKey, JSON.stringify(state))
             }
           }
         }
@@ -914,20 +912,6 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     }
     updateStorage()
   }, [init.name, persistence, state])
-
-  const filterRead = useCallback(
-    function <R>(
-      $filter: (() => R | Promise<R>) | Selector<R | Promise<R>>
-    ): R {
-      const $key =
-        storeName === false
-          ? ($filter as any)['init-object']
-          : [storeName, ($filter as any)['filter-name']].join('-')
-      const $filterValue = defaultFiltersValues.get($key)
-      return $filterValue
-    },
-    [storeName]
-  )
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const actions = useMemo(() => init.actions || {}, [init.actions])
