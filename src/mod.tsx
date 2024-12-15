@@ -1452,24 +1452,24 @@ export function createAtomicHook<R, Actions = { [k: string]: any }>(
       /**
        * Should be used only with object values
        */
-      // @ts-expect-error
+      // @ts-ignore
       setPartialvalue({ dispatch, args }) {
         if (typeof args === 'function') {
-          // @ts-expect-error
+          // @ts-ignore
           dispatch(prev => ({ ...prev, ...args(prev as Required<R>) }))
-          // @ts-expect-error
+          // @ts-ignore
         } else dispatch(prev => ({ ...prev, ...args }))
       },
-      // @ts-expect-error
+      // @ts-ignore
       setPartial({ dispatch, args }) {
         if (typeof args === 'function') {
-          // @ts-expect-error
+          // @ts-ignore
           dispatch(prev => ({ ...prev, ...args(prev as Required<R>) }))
-          // @ts-expect-error
+          // @ts-ignore
         } else dispatch(prev => ({ ...prev, ...args }))
       },
       // Can be used with non-object values
-      // @ts-expect-error
+      // @ts-ignore
       setValue({ dispatch, args }) {
         // @ts-ignore
         dispatch(args)
@@ -1477,7 +1477,7 @@ export function createAtomicHook<R, Actions = { [k: string]: any }>(
       /**
        * Reset the store state to the original value (Taken from `default`)
        */
-      // @ts-expect-error
+      // @ts-ignore
       reset({ dispatch }) {
         dispatch(config.default as R)
       },
@@ -1537,7 +1537,16 @@ export function create<R, Actions = { [k: string]: any }>(
 ) {
   const thisAtom = atom(config as Atom<R, Actions> | Selector<R>)
 
-  const all = () => useAtom<R>(thisAtom as Atom<R, Actions>)
+  const all = () => {
+    const atomUse = useAtom<R>(thisAtom as Atom<R, Actions>)
+
+    // Even if TS is happy, when creating a selector, destructuring
+    // with [] will result in an error with non-iterable
+    // types such as number and string because selectors only return the value.
+    // With this check, it is guaranteed a selector's value can be accessed
+    // as [value]
+    return ('get' in config ? [atomUse] : atomUse) as typeof atomUse
+  }
 
   for (let prop in thisAtom) {
     // @ts-ignore
