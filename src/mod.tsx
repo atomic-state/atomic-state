@@ -984,7 +984,10 @@ const filterObservables: {
 const subscribedFilters: any = {}
 
 const cachedDeps = new Map<string, any>()
-const cachedResolving = new Map<string, any>()
+const cachedDepsValues = new Map<string, any>()
+const cached$resolving = new Map<string, any>()
+const cachedReadFilters = new Map<string, any>()
+const cachedReadFiltersValues = new Map<string, any>()
 
 export function filter<R>(init: Selector<R | Promise<R>>) {
   if (!init.name) {
@@ -1003,16 +1006,27 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
   if (!cachedDeps.has(name)) {
     cachedDeps.set(name, {})
   }
+  let filterDeps = cachedDeps.get(name)
 
-  let filterDeps = cachedDeps.get(init.key)
+  if (!cachedDepsValues.has(name)) {
+    cachedDepsValues.set(name, {})
+  }
+  const depsValues = cachedDepsValues.get(name)
 
-  let $resolving: any = {}
+  if (!cached$resolving.has(name)) {
+    cached$resolving.set(name, {})
+  }
+  let $resolving = cached$resolving.get(name)
 
-  let readFilters: any = {}
+  if (!cachedReadFilters.has(name)) {
+    cachedReadFilters.set(name, {})
+  }
+  let readFilters = cachedReadFilters.get(name)
 
-  let readFiltersValues: any = {}
-
-  let depsValues: any = {}
+  if (!cachedReadFiltersValues.has(name)) {
+    cachedReadFiltersValues.set(name, {})
+  }
+  let readFiltersValues = cachedReadFilters.get(name)
 
   const useFilterGet = () => {
     const hookCall = useMemo(() => Math.random(), [])
@@ -1134,6 +1148,7 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
               resolvedFilters[$filterKey] = true
               defaultFiltersValues.set($filterKey, init.default)
               try {
+                $resolving[$filterKey] = true
                 firstResolved = filtersInitializeObjects
                   .get(name)
                   ?.get(getObject)
@@ -1155,6 +1170,9 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
                 if (_isDefined(firstResolved)) {
                   notifyOtherFilters('', firstResolved)
                 }
+                queueMicrotask(() => {
+                  $resolving[$filterKey] = false
+                })
                 return firstResolved
               }
             })()
