@@ -3,7 +3,7 @@
  * Copyright (c) Dany Beltran
  *
  * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * LICENSE file in the roo&t directory of this source tree.
  */
 
 import {
@@ -983,18 +983,28 @@ const filterObservables: {
 
 const subscribedFilters: any = {}
 
+const cachedDeps = new Map<string, any>()
+const cachedResolving = new Map<string, any>()
+
 export function filter<R>(init: Selector<R | Promise<R>>) {
   if (!init.name) {
     init.name = init.key as string
   }
 
-  if (!_isDefined(filtersInitializeObjects.get(init?.name))) {
+  if (
+    !_isDefined(filtersInitializeObjects.get(init?.name)) ||
+    filtersInitializeObjects.get(init.name) !== init
+  ) {
     filtersInitializeObjects.set(init?.name, init)
   }
 
   const { name = '' } = filtersInitializeObjects.get(init?.name)
 
-  let filterDeps: any = {}
+  if (!cachedDeps.has(name)) {
+    cachedDeps.set(name, {})
+  }
+
+  let filterDeps = cachedDeps.get(init.key)
 
   let $resolving: any = {}
 
@@ -1011,7 +1021,7 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
 
     const $prefix = storeName === false ? '' : (storeName as string)
 
-    if (!filterDeps[$prefix]) {
+    if (!($prefix in filterDeps)) {
       filterDeps[$prefix] = {}
     }
 
@@ -1540,11 +1550,6 @@ export function create<R, Actions = { [k: string]: any }>(
   const all = () => {
     const atomUse = useAtom<R>(thisAtom as Atom<R, Actions>)
 
-    // Even if TS is happy, when creating a selector, destructuring
-    // with [] will result in an error with non-iterable
-    // types such as number and string because selectors only return the value.
-    // With this check, it is guaranteed a selector's value can be accessed
-    // as [value]
     return ('get' in config ? [atomUse] : atomUse) as typeof atomUse
   }
 
