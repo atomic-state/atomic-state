@@ -1148,6 +1148,7 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
               resolvedFilters[$filterKey] = true
               defaultFiltersValues.set($filterKey, init.default)
               try {
+                $resolving[$filterKey] = true
                 firstResolved = filtersInitializeObjects
                   .get(name)
                   ?.get(getObject)
@@ -1169,6 +1170,9 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
                 if (_isDefined(firstResolved)) {
                   notifyOtherFilters('', firstResolved)
                 }
+                queueMicrotask(() => {
+                  $resolving[$filterKey] = false
+                })
                 return firstResolved
               }
             })()

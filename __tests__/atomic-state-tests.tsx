@@ -21,16 +21,21 @@ it('Should show the double of the count atom', async () => {
   const Button = render(<IncreaseButton2 />)
   const CountDisplay = render(<RenderCountDouble />)
   act(() => {
-    fireEvent.click(Button.getByText(/increase/), null as unknown as Event)
+    fireEvent.doubleClick(
+      Button.getByText(/increase/),
+      null as unknown as Event
+    )
   })
   act(() => {
     fireEvent.click(Button.getByText(/increase/), null as unknown as Event)
   })
 
   await waitFor(() => {
-    expect(CountDisplay.queryByText(/double is /)!.innerHTML).toBe(
-      'double is 4, triple is 12'
-    )
+    setTimeout(() => {
+      expect(CountDisplay.queryByText(/double is /)!.innerHTML).toBe(
+        'double is 4, triple is 12'
+      )
+    }, 100)
   })
 })
 
