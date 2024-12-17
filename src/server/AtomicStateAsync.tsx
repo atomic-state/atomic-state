@@ -1,4 +1,4 @@
-import { PersistenceStoreType } from '../mod'
+import { PersistenceStoreType, AtomicState } from '../mod'
 import { $context } from '../shared'
 import { defaultAtomsInAtomic, defaultAtomsValues } from '../store'
 import { _isDefined } from '../utils'
@@ -58,5 +58,5 @@ export async function AtomicStateAsync({
     })
   }
 
-  return children
+  return <AtomicState>{children}</AtomicState>
 }
