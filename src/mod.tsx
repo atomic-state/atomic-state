@@ -483,13 +483,15 @@ export function setAtom<R = any>(
   }
 
   if (!willCancel) {
-    defaultAtomsValues.set($atomKey, newValue)
-    if (observable) {
-      observable.notify(
-        $atomKey,
-        Math.random().toFixed(2),
-        defaultAtomsValues.get($atomKey)
-      )
+    if (defaultAtomsValues.get($atomKey) !== newValue) {
+      defaultAtomsValues.set($atomKey, newValue)
+      if (observable) {
+        observable.notify(
+          $atomKey,
+          Math.random().toFixed(2),
+          defaultAtomsValues.get($atomKey)
+        )
+      }
     }
   }
 }
@@ -585,7 +587,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
           }
         }
       } else {
-        if (!_isDefined(defaultAtomsValues.get($atomKey))) {
+        if (!defaultAtomsValues.has($atomKey)) {
           defaultAtomsValues.set($atomKey, initVal)
         }
       }
@@ -727,9 +729,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
         } finally {
           if (!willCancel) {
             if (_isDefined(newValue)) {
-              defaultAtomsValues.set($atomKey, newValue)
-              if (persistence) {
-                $persistence.setItem($atomKey, JSON.stringify(newValue))
+              if (defaultAtomsValues.get($atomKey) !== newValue) {
+                defaultAtomsValues.set($atomKey, newValue)
+                if (persistence) {
+                  $persistence.setItem($atomKey, JSON.stringify(newValue))
+                }
               }
             }
             try {
@@ -850,9 +854,11 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
               : undefined
             if (_isDefined(v)) {
               ;(v as any).then((val: any) => {
-                defaultAtomsValues.set($atomKey, val)
-                notify($atomKey, hookCall, defaultAtomsValues.get($atomKey))
-                updateState(val as R)
+                if (defaultAtomsValues.get($atomKey) !== val) {
+                  defaultAtomsValues.set($atomKey, val)
+                  notify($atomKey, hookCall, defaultAtomsValues.get($atomKey))
+                  updateState(val as R)
+                }
               })
             }
           } else {
