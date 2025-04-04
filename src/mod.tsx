@@ -350,7 +350,7 @@ export const AtomicState: React.FC<{
     }
   }
 
-  const createdAtoms = Object.values(atomsInitializeObjects) as any
+  const createdAtoms = Array.from(atomsInitializeObjects.values()) as any
 
   const thisId = useMemo(() => Math.random(), []).toString()
 
@@ -956,7 +956,7 @@ export function atom<R, ActionsArgs = any>(
 
     usedKeys.set(init.name, true)
 
-    if (!atomsInitializeObjects.get(init.name)) {
+    if (!atomsInitializeObjects.has(init.name)) {
       atomsInitializeObjects.set(init?.name, init)
     }
 
