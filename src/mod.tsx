@@ -363,7 +363,7 @@ export const AtomicState: React.FC<{
           </StrictMode>
         )
       }),
-    [createdAtoms]
+    [createdAtoms, storeName]
   )
 
   return (
@@ -898,7 +898,7 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
       observer.removeListener($atomKey, handler)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runEffects])
+  }, [runEffects, $atomKey, hookCall])
 
   useEffect(() => {
     async function updateStorage() {
@@ -1583,7 +1583,8 @@ export function create<R, Actions = { [k: string]: any }>(
   }
 
   all.value = () => getValue(thisAtom) as R
-  all.set = (value: R | ((v: R) => R)) => setAtom(thisAtom, value)
+  all.set = (value: R | ((v: R) => R), storeName?: string) =>
+    setAtom(thisAtom, value, storeName)
   all.actions = getActions(thisAtom)
   all.atom = thisAtom
 
