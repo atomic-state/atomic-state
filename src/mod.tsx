@@ -218,35 +218,33 @@ const defaultPersistenceProvider =
 export function createPersistence(
   _persistenceProvider: PersistenceStoreType = defaultPersistenceProvider
 ) {
-  const persistenceProvider = {
-    ..._persistenceProvider
-  }
   const setItem =
-    persistenceProvider.setItem ??
-    persistenceProvider.set ??
-    persistenceProvider.setItemAsync ??
+    _persistenceProvider.setItem ??
+    _persistenceProvider.set ??
+    _persistenceProvider.setItemAsync ??
     (() => {})
 
   const getItem =
-    persistenceProvider.getItem ??
-    persistenceProvider.get ??
-    persistenceProvider.getItemAsync ??
+    _persistenceProvider.getItem ??
+    _persistenceProvider.get ??
+    _persistenceProvider.getItemAsync ??
     (() => {})
 
   const removeItem =
-    persistenceProvider.removeItem ??
-    persistenceProvider.remove ??
-    persistenceProvider.removeItemAsync ??
-    persistenceProvider.delete ??
-    persistenceProvider.deleteItem ??
-    persistenceProvider.deleteItemAsync ??
+    _persistenceProvider.removeItem ??
+    _persistenceProvider.remove ??
+    _persistenceProvider.removeItemAsync ??
+    _persistenceProvider.delete ??
+    _persistenceProvider.deleteItem ??
+    _persistenceProvider.deleteItemAsync ??
     (() => {})
 
-  persistenceProvider.setItem = setItem
-  persistenceProvider.getItem = getItem
-  persistenceProvider.removeItem = removeItem
-
-  return persistenceProvider
+  // Create a new object with bound methods instead of spreading
+  return {
+    setItem: setItem.bind(_persistenceProvider),
+    getItem: getItem.bind(_persistenceProvider),
+    removeItem: removeItem.bind(_persistenceProvider)
+  }
 }
 
 const atomicStateContext = createContext<{
