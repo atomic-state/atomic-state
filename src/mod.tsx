@@ -216,8 +216,11 @@ const defaultPersistenceProvider =
       }
 
 export function createPersistence(
-  persistenceProvider: PersistenceStoreType = defaultPersistenceProvider
+  _persistenceProvider: PersistenceStoreType = defaultPersistenceProvider
 ) {
+  const persistenceProvider = {
+    ..._persistenceProvider
+  }
   const setItem =
     persistenceProvider.setItem ??
     persistenceProvider.set ??
@@ -557,8 +560,8 @@ function useAtomCreate<R, ActionsArgs>(init: Atom<R, ActionsArgs>) {
     const initialIfFnOrPromise = isFunction
       ? (init.default as any)()
       : _isPromise(init.default)
-      ? init.default
-      : undefined
+        ? init.default
+        : undefined
 
     const isPromiseValue = _isPromise(initialIfFnOrPromise)
 
@@ -1101,8 +1104,8 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
           ? $atom.default
           : defaultAtomsValues.get(__valuesKey)
         : !_isDefined(defaultAtomsValues.get(__valuesKeyNames))
-        ? $atom['init-object'].default
-        : defaultAtomsValues.get(__valuesKeyNames)
+          ? $atom['init-object'].default
+          : defaultAtomsValues.get(__valuesKeyNames)
     }
 
     const $$filterRead = ($filter: any) => {
@@ -1112,8 +1115,8 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
           ? $filter.name
           : [storeName, $filter.name].join('-')
         : storeName === false
-        ? $filter['filter-name']
-        : [storeName, $filter['filter-name']].join('-')
+          ? $filter['filter-name']
+          : [storeName, $filter['filter-name']].join('-')
 
       if (!_isFunction($filter)) {
         readFilters[__filtersKey] = true
@@ -1129,8 +1132,8 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
           ? $filter.default
           : defaultFiltersValues.get(__filtersKey)
         : !_isDefined(defaultFiltersValues.get(__filtersKey))
-        ? $filter['init-object']?.default
-        : defaultFiltersValues.get(__filtersKey)
+          ? $filter['init-object']?.default
+          : defaultFiltersValues.get(__filtersKey)
     }
 
     const getObject = useMemo(
@@ -1262,11 +1265,11 @@ export function filter<R>(init: Selector<R | Promise<R>>) {
         _isFunction(e.payload)
           ? true
           : isFilterUpdate
-          ? !jsonEquality(
-              defaultFiltersValues.get(e.storeName),
-              readFiltersValues[e.storeName]
-            )
-          : !jsonEquality(e.payload, depsValues[e.storeName])
+            ? !jsonEquality(
+                defaultFiltersValues.get(e.storeName),
+                readFiltersValues[e.storeName]
+              )
+            : !jsonEquality(e.payload, depsValues[e.storeName])
       ) {
         if (
           e.storeName in (isFilterUpdate ? readFilters : filterDeps[$prefix])
@@ -1574,7 +1577,18 @@ export function create<R, Actions = { [k: string]: any }>(
   const all = () => {
     const atomUse = useAtom<R>(thisAtom as Atom<R, Actions>)
 
-    return ('get' in config ? [atomUse] : atomUse) as typeof atomUse
+    // @ts-expect-error
+    atomUse.value = atomUse[0]
+    // @ts-expect-error
+    atomUse.setValue = atomUse[1]
+    // @ts-expect-error
+    atomUse.actions = atomUse[2]
+
+    return ('get' in config ? [atomUse] : atomUse) as typeof atomUse & {
+      value: (typeof atomUse)[0]
+      setValue: (typeof atomUse)[1]
+      actions: (typeof atomUse)[2]
+    }
   }
 
   for (let prop in thisAtom) {
